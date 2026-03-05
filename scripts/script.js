@@ -16,8 +16,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
 
     // 2. Initial Theme Sync
-    const savedTheme = localStorage.getItem('user-theme') || 'f1';
-    setTheme(savedTheme);
+    const localTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === "function")
+        ? window.ThemeSync.getLocalTheme()
+        : (localStorage.getItem("user-theme") || "f1");
+    setTheme(localTheme, { broadcast: false });
 
     // 3. UI Initialization
     const startInput = document.getElementById("ojtStartDate");

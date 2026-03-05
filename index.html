@@ -1,12 +1,23 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Custom DTR – Delta Time System</title>
+  <title>Custom DTR | Delta Time System</title>
   <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/telemetry.css">
   <link rel="stylesheet" href="css/theme.css">
+    <!-- favicon -->
+  <link rel="icon" href="favicons/F1Favicon32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="favicons/F1Favicon192.png" sizes="192x192" type="image/png">
+  <link id="site-favicon" rel="icon" href="favicons/F1Favicon32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="favicons/apple-touch-icon.png" sizes="192x192">
+  <link rel="manifest" href="favicons/site.webmanifest">
+  <meta name="theme-color" content="#10131a">
+  <script>
+    const savedTheme = localStorage.getItem('user-theme') || 'f1';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
 </head>
 <body>
 
@@ -18,6 +29,7 @@
     <p class="subtitle">
       Formula 1 Delta System • Target-Based Productivity Telemetry
     </p>
+    <button class="telemetry-btn" type="button" onclick="window.location.href='faq.html'">FAQ</button>
   </div>
 
   <!-- Theme Switcher -->
@@ -26,6 +38,8 @@
     <button class="btn-theme-f1" onclick="setTheme('f1')">F1 Theme</button>
     <button class="btn-theme-cadillac" onclick="setTheme('cadillac')">Cadillac</button>
     <button class="btn-theme-apx" onclick="setTheme('apx')">APX GP</button>
+    <button class="btn-theme-mclaren" onclick="setTheme('mclaren')">McLaren</button>
+    <button class="btn-theme-ferrari" onclick="setTheme('ferrari')">Ferrari</button>
     <span class="export-divider">|</span>
     <button class="btn-theme-kiki" onclick="setTheme('kiki')">Kiki's Delivery Service</button>
   </div>
@@ -254,12 +268,12 @@
         </div>
         <span id="storageBarTip" class="storage-hover-tip" aria-hidden="true"></span>
       </div>
-      <p id="storageStatus" class="storage-status">Calculating…</p>
+      <p id="storageStatus" class="storage-status">Calculatingâ€¦</p>
       <div id="storageIdbSection" class="storage-idb-section" style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);">
         <div class="storage-info" style="font-size:0.9em;">
           <span id="storageIdbUsedText">0.00 MB</span>
           <span class="storage-sep">/</span>
-          <span id="storageIdbQuotaText">— MB</span>
+          <span id="storageIdbQuotaText">â€” MB</span>
           <span class="storage-label"> Images (IndexedDB)</span>
         </div>
         <div class="storage-bar-host" style="margin-top:4px;">
@@ -400,12 +414,12 @@
   <div class="modal-content pdf-preview-modal-content">
     <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:2px solid var(--accent); margin-bottom:12px;">
       <h3 id="pdfPreviewTitle" style="margin:0; font-family:var(--font-heading); color:var(--accent); text-transform:uppercase; letter-spacing:1px; font-size:1rem;">PDF Preview</h3>
-      <button onclick="closePdfPreview()" style="background:transparent; color:var(--text); border:1px solid var(--border); padding:4px 12px; font-size:12px; border-radius:4px; cursor:pointer;">✕ Close</button>
+      <button onclick="closePdfPreview()" style="background:transparent; color:var(--text); border:1px solid var(--border); padding:4px 12px; font-size:12px; border-radius:4px; cursor:pointer;">âœ• Close</button>
     </div>
     <iframe id="pdfPreviewFrame" style="width:100%; height:65vh; border:none; border-radius:6px; background:#fff;"></iframe>
     <div class="modal-actions" style="border-top:1px solid var(--border); padding-top:14px; margin-top:12px;">
       <button onclick="closePdfPreview()" style="background:transparent; color:var(--text); border:1px solid var(--border);">Cancel</button>
-      <button id="pdfDownloadBtn" onclick="triggerPdfDownload()">⬇ Download PDF</button>
+      <button id="pdfDownloadBtn" onclick="triggerPdfDownload()">â¬‡ Download PDF</button>
     </div>
   </div>
 </div>
@@ -418,6 +432,7 @@
 <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
 
 <!-- Core Logic & Helpers -->
+<script src="scripts/theme-sync.js"></script>
 <script src="scripts/dtr-core.js"></script>
 <script src="scripts/dtr-image-store.js"></script>
 <!-- Logic Modules -->
@@ -432,4 +447,7 @@
 
 </body>
 </html>
+
+
+
 

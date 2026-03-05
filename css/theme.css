@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
 
 :root {
   /* 1. Global Defaults (F1 Style) */
@@ -21,6 +22,91 @@
   );
   --led-matrix-size: 3px 3px;
   --lcd-border: 1px solid rgba(255, 255, 255, 0.1);
+
+  /* global fallback font */
+  --font-body: "JetBrains Mono Nerd Font", monospace;
+  --font-heading: "JetBrains Mono Nerd Font", monospace;
+}
+
+/* --- MCLAREN THEME --- */
+
+[data-theme="mclaren"] {
+    /* Brand palette */
+    --orange: #ef8733;
+    --orange-dark: #d0782f;
+    --orange-light: #ff9c4d;
+
+    --text: #ffffff;
+    --accent: var(--orange);
+    --border: var(--orange-light);
+    --panel: #111; /* dark panel fallback */
+
+    /* Fonts */
+    --font-heading: "Space Grotesk", sans-serif;
+    --font-body: "Space Grotesk", sans-serif;
+
+    /* Telemetry levels/colors */
+    --level-0: #000000;
+    --level-1: var(--orange-dark);
+    --level-2: var(--orange);
+    --level-3: var(--orange-light);
+
+    --color-neutral: #a0a0a0;
+    --color-warning: var(--orange-dark);
+    --color-good: var(--orange);
+    --color-excellent: var(--orange-light);
+
+    /* telemetry chart colors: dark and light shades of McLaren orange */
+    --chart-grid: rgba(239, 135, 51, 0.05);           /* very faint orange on black */
+    --chart-fill: rgba(239, 135, 51, 0.2);            /* medium opacity orange */
+    --chart-ideal: rgba(239, 135, 51, 0.4);           /* lighter/brighter band for ideal line */
+    --chart-highlight: rgba(239, 135, 51, 0.65);      /* richer shade for emphasis */
+    --mclaren-grid-rgb: 239, 135, 51;
+    --mclaren-grid-alpha: 0.26;
+
+    opacity: 1;
+}
+
+[data-theme="mclaren"] body {
+    background-color: var(--bg, #000000) !important;
+    background-image:
+      linear-gradient(
+        0deg,
+        transparent 24%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 25%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 26%,
+        transparent 27%,
+        transparent 74%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 75%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 76%,
+        transparent 77%,
+        transparent
+      ),
+      linear-gradient(
+        90deg,
+        transparent 24%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 25%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 26%,
+        transparent 27%,
+        transparent 74%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 75%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 76%,
+        transparent 77%,
+        transparent
+      ) !important;
+    background-size: 55px 55px !important;
+}
+
+/* McLaren button styling */
+.btn-theme-mclaren {
+    background: #ef8733 !important;
+    color: black !important;
+    border: 1px solid #ef8733 !important;
+    font-family: "Space Grotesk", sans-serif !important;
+}
+.btn-theme-mclaren:hover {
+    background: #d0782f !important;
+    box-shadow: 0 0 10px rgba(239, 135, 51, 0.5);
 }
 
 /* 2. Cadillac Overrides */
@@ -215,8 +301,8 @@
 
 /* --- Card Reconfiguration (Opaque & Solid) --- */
 /* FORCE SOLID CARDS FOR CADILLAC */
-[data-theme="cadillac"] .card, 
-[data-theme="cadillac"] .stat-card, 
+[data-theme="cadillac"] .card,
+[data-theme="cadillac"] .stat-card,
 [data-theme="cadillac"] .telemetry-card,
 [data-theme="cadillac"] .chart-container {
     background-color: #282828 !important; /* Matches --bg */
@@ -227,7 +313,7 @@
 }
 
 /* Ensure text remains visible on the solid background */
-[data-theme="cadillac"] .card h3, 
+[data-theme="cadillac"] .card h3,
 [data-theme="cadillac"] .stat-value {
     color: var(--text) !important;
 }
@@ -244,12 +330,12 @@
 
 /* --- Button Refactor --- */
 /* Default buttons (Gold) */
-[data-theme="cadillac"] button {
+[data-theme="cadillac"] button:not([class*="btn-theme-"]) {
     background: linear-gradient(to bottom, var(--accent), var(--accent-dark));
     color: var(--black); font-weight: 700; border: 1px solid var(--accent-light);
 }
 
-[data-theme="cadillac"] button:hover {
+[data-theme="cadillac"] button:not([class*="btn-theme-"]):hover {
     background: var(--accent-light) !important;
     box-shadow: 0 0 15px rgba(232, 176, 30, 0.4) !important;
 }
@@ -267,8 +353,8 @@
 }
 
 /* --- Typography --- */
-[data-theme="cadillac"] h1, 
-[data-theme="cadillac"] h2, 
+[data-theme="cadillac"] h1,
+[data-theme="cadillac"] h2,
 [data-theme="cadillac"] h3,
 [data-theme="cadillac"] .card h1,
 [data-theme="cadillac"] .card h2 {
@@ -278,13 +364,12 @@
 }
 
 /* Force body and all text elements to Cadillac Gothic Wide */
-[data-theme="cadillac"],
 [data-theme="cadillac"] body,
 [data-theme="cadillac"] label,
 [data-theme="cadillac"] span,
 [data-theme="cadillac"] p,
 [data-theme="cadillac"] .subtitle,
-[data-theme="cadillac"] button:not([class*="btn-theme-"]), 
+[data-theme="cadillac"] button:not([class*="btn-theme-"]),
 [data-theme="cadillac"] input,
 [data-theme="cadillac"] textarea,
 [data-theme="cadillac"] select {
@@ -377,7 +462,7 @@
 }
 
 /* Force APX Cards to be solid and have a tech-border */
-[data-theme="apx"] .card, 
+[data-theme="apx"] .card,
 [data-theme="apx"] .stat-card,
 [data-theme="apx"] .telemetry-card {
     background: #0a0a0a !important; 
@@ -387,15 +472,14 @@
     color: var(--text);
 }
 /* APX Tech Buttons */
-[data-theme="apx"] button {
+[data-theme="apx"] button:not([class*="btn-theme-"]) {
     background: transparent;
     border: 1px solid var(--apx-gold);
     color: var(--apx-gold);
     font-family: "UAV OSD Sans", monospace;
-    text-transform: uppercase;
 }
 
-[data-theme="apx"] button:hover {
+[data-theme="apx"] button:not([class*="btn-theme-"]):hover {
     background: var(--apx-gold);
     color: black;
     box-shadow: 0 0 15px var(--apx-gold);
@@ -464,13 +548,13 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-[data-theme="kiki"] button {
+[data-theme="kiki"] button:not([class*="btn-theme-"]) {
     background: linear-gradient(180deg, #cf6436, #e15b49);
     color: #fff8e7;
     border: 1px solid #d5ce8c;
 }
 
-[data-theme="kiki"] button:hover {
+[data-theme="kiki"] button:not([class*="btn-theme-"]):hover {
     background: linear-gradient(180deg, #e15b49, #cf6436) !important;
     box-shadow: 0 0 14px rgba(229, 91, 73, 0.45);
 }
@@ -482,7 +566,183 @@
 }
 
 /* ==========================================
-   5. THEME-SPECIFIC BUTTON STYLES
+   5. FERRARI (Italian Passion - Red/White/Black)
+   ========================================== */
+@font-face {
+  font-family: 'Ferro Rosso';
+    src: url('../fonts/FerroRosso.woff2') format('woff2');
+  font-display: swap;
+}
+/*
+@font-face {
+  font-family: 'Ferrari Sans';
+    src: url('../fonts/FerrariSans.woff2') format('woff2');
+  font-display: swap;
+  font-weight: 400;
+}
+*/
+
+[data-theme="ferrari"] {
+    /* Ferrari Brand Palette */
+    --ferrari-red: #D52E37;
+    --ferrari-red-rgb: 213, 46, 55;
+    --ferrari-white: #FFFFFF;
+    --ferrari-black: #000000;
+    --ferrari-black-rgb: 0, 0, 0;
+    --ferrari-yellow: #ffe43f;
+
+    /* Foundation */
+    --bg: var(--ferrari-black);
+    --surface: #1a1a1a;
+    --text: var(--ferrari-white);
+    --text-dim: #cccccc;
+    --border: var(--ferrari-yellow);
+    --accent: var(--ferrari-yellow);
+    --accent-dark: #a82530;
+    --accent-light: #e85f66;
+
+    /* Semantic Color Mappings */
+    --color-highest: var(--ferrari-red);
+    --color-mid: var(--ferrari-yellow);
+    --color-low: var(--accent-dark);
+    --color-empty: #333333;
+
+    /* Standardized JS Mappings */
+    --color-neutral: #999999;
+    --color-warning: var(--ferrari-yellow);
+    --color-good: var(--ferrari-white);
+    --color-excellent: var(--ferrari-red);
+
+    /* Telemetry Levels */
+    --level-0: var(--color-empty);
+    --level-1: var(--color-low);
+    --level-2: var(--color-mid);
+    --level-3: var(--color-highest);
+
+    /* Chart Overrides */
+    --chart-grid: rgba(213, 46, 55, 0.08);
+    --chart-fill: rgba(213, 46, 55, 0.15);
+    --chart-ideal: rgba(255, 255, 255, 0.12);
+    --ferrari-bg-dark: rgba(var(--ferrari-black-rgb), 0.92);
+    --ferrari-bg-light: rgba(var(--ferrari-red-rgb), 0.18);
+
+    /* Fonts */
+    --font-heading: "Ferro Rosso", sans-serif;
+    --font-body: "Jet Brains Mono", sans-serif;
+}
+
+/* Ferrari Body & Cards */
+[data-theme="ferrari"] body {
+    background: var(--ferrari-black) !important;
+    position: relative;
+    isolation: isolate;
+}
+
+[data-theme="ferrari"] body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: linear-gradient(
+      135deg,
+      var(--ferrari-bg-dark) 25%,
+      var(--ferrari-bg-light) 25%,
+      var(--ferrari-bg-light) 50%,
+      var(--ferrari-bg-dark) 50%,
+      var(--ferrari-bg-dark) 75%,
+      var(--ferrari-bg-light) 75%,
+      var(--ferrari-bg-light)
+    );
+    background-size: 40px 40px;
+    animation: ferrari-bg-move 4s linear infinite;
+}
+
+@keyframes ferrari-bg-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+[data-theme="ferrari"] .card,
+[data-theme="ferrari"] .stat-card,
+[data-theme="ferrari"] .telemetry-card,
+[data-theme="ferrari"] .chart-container {
+    background: #0a0a0a !important;
+    border: 2px solid var(--surface) !important;
+    box-shadow: 0 0 20px rgba(213, 46, 55, 0.2);
+    color: var(--ferrari-white);
+}
+
+[data-theme="ferrari"] .card::after {
+    background-image: none !important;
+}
+
+/* Ferrari Accent line on cards */
+[data-theme="ferrari"] .card::before,
+[data-theme="ferrari"] .stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--ferrari-red), transparent);
+}
+
+/* Ferrari Typography */
+[data-theme="ferrari"] h1,
+[data-theme="ferrari"] h2,
+[data-theme="ferrari"] h3,
+[data-theme="ferrari"] .card h1,
+[data-theme="ferrari"] .card h2 {
+    font-family: var(--font-heading) !important;
+    color: var(--ferrari-red);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+[data-theme="ferrari"] body,
+[data-theme="ferrari"] label,
+[data-theme="ferrari"] span,
+[data-theme="ferrari"] p,
+[data-theme="ferrari"] .subtitle,
+[data-theme="ferrari"] button:not([class*="btn-theme-"]),
+[data-theme="ferrari"] input,
+[data-theme="ferrari"] textarea,
+[data-theme="ferrari"] select {
+    font-family: var(--font-body) !important;
+    color: var(--ferrari-white);
+}
+
+/* Ferrari Buttons */
+[data-theme="ferrari"] button:not([class*="btn-theme-"]) {
+    background: linear-gradient(to bottom, var(--ferrari-red), var(--accent-dark));
+    color: var(--ferrari-white);
+    border: 1px solid var(--accent-light);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+[data-theme="ferrari"] button:not([class*="btn-theme-"]):hover {
+    background: var(--accent-light) !important;
+    color: var(--ferrari-black) !important;
+    box-shadow: 0 0 20px rgba(213, 46, 55, 0.6) !important;
+}
+
+[data-theme="ferrari"] .btn-destructive {
+    background: linear-gradient(to bottom, var(--accent-dark), #8a1f26) !important;
+    border: 1px solid var(--accent-light) !important;
+    color: var(--ferrari-white) !important;
+}
+
+[data-theme="ferrari"] .btn-destructive:hover {
+    background: var(--ferrari-red) !important;
+    box-shadow: 0 0 20px rgba(213, 46, 55, 0.6) !important;
+}
+
+/* ==========================================
+   6. THEME-SPECIFIC BUTTON STYLES
    ========================================== */
 .btn-theme-f1 {
     background: #ff1e00 !important;
@@ -537,4 +797,19 @@
 .btn-theme-kiki:hover {
     background: linear-gradient(180deg, #e15b49, #cf6436) !important;
     box-shadow: 0 0 12px rgba(229, 91, 73, 0.45);
+}
+.btn-theme-ferrari {
+    background: linear-gradient(to bottom, #D52E37, #a82530) !important;
+    color: #FFFFFF !important;
+    border: 1px solid #e85f66 !important;
+    font-family: "Ferro Rosso", "Ferrari Sans", sans-serif !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px;
+}
+
+.btn-theme-ferrari:hover {
+    background: #e85f66 !important;
+    color: #000000 !important;
+    box-shadow: 0 0 15px rgba(213, 46, 55, 0.7);
 }

@@ -3,6 +3,79 @@
  * Handles chart initialization and data visualization
  */
 
+// Shared chart motion profile + hover feedback for telemetry cards.
+if (typeof window !== "undefined" && window.Chart && !window.__telemetryMotionInit) {
+    window.__telemetryMotionInit = true;
+
+    Chart.defaults.animation = {
+        duration: 850,
+        easing: "easeOutQuart"
+    };
+    Chart.defaults.animations = {
+        x: { duration: 650, easing: "easeOutCubic" },
+        y: { duration: 850, easing: "easeOutQuart" }
+    };
+    Chart.defaults.transitions.active = {
+        animation: {
+            duration: 180
+        }
+    };
+
+    Chart.register({
+        id: "telemetryHoverPulse",
+        afterEvent(chart, args) {
+            const card = chart && chart.canvas ? chart.canvas.closest(".chart-card") : null;
+            if (!card || !args || !args.event) return;
+            const type = args.event.type;
+            if (type === "mouseout" || type === "mouseleave") {
+                card.classList.remove("telemetry-chart-hover");
+                return;
+            }
+            if (type === "mousemove" || type === "touchmove" || type === "pointermove") {
+                const active = chart.getActiveElements();
+                card.classList.toggle("telemetry-chart-hover", Array.isArray(active) && active.length > 0);
+            }
+        }
+    });
+}
+
+function boostColor(hexOrRgba, boost = 0.18) {
+    if (!hexOrRgba || typeof hexOrRgba !== 'string') return hexOrRgba;
+
+    const hex = hexOrRgba.trim();
+    if (/^#([0-9a-fA-F]{6})$/.test(hex)) {
+        const n = parseInt(hex.slice(1), 16);
+        const r = (n >> 16) & 255;
+        const g = (n >> 8) & 255;
+        const b = n & 255;
+        const nr = Math.min(255, Math.round(r + (255 - r) * boost));
+        const ng = Math.min(255, Math.round(g + (255 - g) * boost));
+        const nb = Math.min(255, Math.round(b + (255 - b) * boost));
+        return `rgb(${nr}, ${ng}, ${nb})`;
+    }
+
+    const rgbMatch = hex.match(/^rgba?\(([^)]+)\)$/i);
+    if (rgbMatch) {
+        const parts = rgbMatch[1].split(',').map(p => p.trim());
+        if (parts.length >= 3) {
+            const r = Number(parts[0]);
+            const g = Number(parts[1]);
+            const b = Number(parts[2]);
+            const a = parts.length > 3 ? Number(parts[3]) : null;
+            if ([r, g, b].every(v => Number.isFinite(v))) {
+                const nr = Math.min(255, Math.round(r + (255 - r) * boost));
+                const ng = Math.min(255, Math.round(g + (255 - g) * boost));
+                const nb = Math.min(255, Math.round(b + (255 - b) * boost));
+                return a !== null && Number.isFinite(a)
+                    ? `rgba(${nr}, ${ng}, ${nb}, ${a})`
+                    : `rgb(${nr}, ${ng}, ${nb})`;
+            }
+        }
+    }
+
+    return hexOrRgba;
+}
+
 function renderTrajectoryChart(logs, customPace = null) {
     const canvas = document.getElementById('trajectoryChart');
     if (!canvas) return;
@@ -10,8 +83,12 @@ function renderTrajectoryChart(logs, customPace = null) {
     
     // Create GRADIENTS
     const gradAccent = ctx.createLinearGradient(0, 0, 0, 400);
-    gradAccent.addColorStop(0, COLORS.accent + '66'); // 40% opacity
+    gradAccent.addColorStop(0, boostColor(COLORS.accent, 0.22).replace('rgb(', 'rgba(').replace(')', ', 0.5)'));
     gradAccent.addColorStop(1, COLORS.fill);
+
+    const lineAccent = boostColor(COLORS.accent, 0.2);
+    const lineExcellent = boostColor(COLORS.excellent, 0.18);
+    const lineText = boostColor(COLORS.text, 0.12);
 
     const series = buildTrajectorySeries({ logs, paceOverride: customPace });
     const labels = series.labels;
@@ -41,8 +118,9 @@ function renderTrajectoryChart(logs, customPace = null) {
                 { 
                     label: 'Actual Progress', 
                     data: actualCumulative, 
-                    borderColor: COLORS.accent, 
+                    borderColor: lineAccent, 
                     backgroundColor: gradAccent, 
+                    borderWidth: 3,
                     fill: true, 
                     tension: 0.1,
                     pointRadius: 2,
@@ -51,7 +129,8 @@ function renderTrajectoryChart(logs, customPace = null) {
                 { 
                     label: 'Forecasted Projection', 
                     data: projectedCumulative, 
-                    borderColor: COLORS.excellent, 
+                    borderColor: lineExcellent, 
+                    borderWidth: 2.5,
                     borderDash: [3, 3],
                     pointRadius: 0,
                     fill: false,
@@ -61,7 +140,8 @@ function renderTrajectoryChart(logs, customPace = null) {
                 { 
                     label: `Ideal Target (Standard ${DAILY_TARGET_HOURS}h Daily)`, 
                     data: idealCumulative, 
-                    borderColor: 'rgba(255,255,255,0.2)', 
+                    borderColor: lineText + '',
+                    borderWidth: 2,
                     borderDash: [5, 5], 
                     pointRadius: 0 
                 }
@@ -222,11 +302,11 @@ function renderIdentityChart(logs) {
                     type: 'line',
                     label: 'Entry Count',
                     data: counts,
-                    borderColor: COLORS.accent,
-                    backgroundColor: COLORS.accent + '33',
-                    pointBackgroundColor: COLORS.accent,
+                    borderColor: boostColor(COLORS.accent, 0.2),
+                    backgroundColor: boostColor(COLORS.accent, 0.2) + '33',
+                    pointBackgroundColor: boostColor(COLORS.accent, 0.22),
                     pointRadius: 3,
-                    pointBorderColor: '#000',
+                    pointBorderColor: boostColor(COLORS.text, 0.1),
                     pointBorderWidth: 1,
                     tension: 0.3,
                     yAxisID: 'y1',
@@ -393,11 +473,11 @@ function renderContextualCharts(logs, selectedWeek) {
                         label: 'Cumulative Delta',
                         type: 'line',
                         data: cumulativeDeltas,
-                        borderColor: COLORS.accent,
+                        borderColor: boostColor(COLORS.accent, 0.22),
                         backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        pointBackgroundColor: COLORS.accent,
-                        pointBorderColor: '#000',
+                        borderWidth: 3,
+                        pointBackgroundColor: boostColor(COLORS.accent, 0.22),
+                        pointBorderColor: boostColor(COLORS.text, 0.1),
                         pointBorderWidth: 1,
                         pointRadius: 3,
                         tension: 0.3,
@@ -481,10 +561,10 @@ function renderRadarChart(logs) {
             datasets: [{
                 label: 'Avg Hours',
                 data: data,
-                borderColor: COLORS.accent,
-                backgroundColor: COLORS.accent + '33',
-                borderWidth: 2,
-                pointBackgroundColor: COLORS.accent,
+                borderColor: boostColor(COLORS.accent, 0.22),
+                backgroundColor: boostColor(COLORS.accent, 0.22) + '33',
+                borderWidth: 3,
+                pointBackgroundColor: boostColor(COLORS.accent, 0.24),
                 pointRadius: 3
             }]
         },
@@ -534,7 +614,7 @@ function renderHourDistChart(logs) {
                 backgroundColor: [
                     COLORS.text + '99',
                     COLORS.warning,
-                    '#FFA500',
+                    COLORS.accent,
                     COLORS.good,
                     COLORS.excellent
                 ],

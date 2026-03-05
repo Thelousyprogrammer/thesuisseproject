@@ -565,3 +565,145 @@ button:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* ===== RESPONSIVE: TABLET (768px-1024px) ===== */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .container {
+    padding: 16px;
+  }
+
+  .card h1 {
+    font-size: 1.4rem;
+  }
+
+  .l2-grid,
+  .l2-grid-commute,
+  .modal-content .edit-telemetry-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .modal-content {
+    width: min(860px, 94vw);
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+
+  .storage-actions {
+    gap: 6px;
+  }
+
+  .storage-actions button,
+  .storage-action-btn {
+    width: calc(50% - 4px);
+    min-width: 180px;
+  }
+}
+
+/* ===== RESPONSIVE: MOBILE (<=767px) ===== */
+@media (max-width: 767px) {
+  .container {
+    padding: 12px;
+  }
+
+  .card {
+    margin-top: 14px;
+    padding: 10px;
+  }
+
+  .card h1 {
+    font-size: 1.25rem;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    font-size: 0.82rem;
+  }
+
+  button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .sort-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .sort-controls select,
+  .export-card select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .viewer-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .viewer-actions button {
+    margin-right: 0;
+  }
+
+  .l2-grid,
+  .l2-grid-commute,
+  .modal-content .edit-row-top,
+  .modal-content .edit-telemetry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-content {
+    width: 96vw;
+    max-width: none;
+    max-height: 92vh;
+    padding: 16px;
+    overflow-y: auto;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+  .export-card .export-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .export-divider {
+    display: none;
+  }
+
+  .export-week-range {
+    max-width: none;
+    white-space: normal;
+  }
+
+  .storage-actions,
+  .storage-card .storage-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .storage-actions button,
+  .storage-action-btn {
+    width: 100%;
+  }
+
+  #storageTargetSelect,
+  #storageBatchSelect {
+    min-width: 0 !important;
+  }
+
+  .telemetry-btn {
+    width: auto;
+    margin-bottom: 0;
+  }
+}

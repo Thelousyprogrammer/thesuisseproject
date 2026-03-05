@@ -1,15 +1,25 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>DTR Telemetry – Performance Analytics</title>
+  <title>DTR Telemetry | Performance Analytics</title>
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/telemetry.css">
   <link rel="stylesheet" href="css/theme.css">
+    <!-- favicon -->
+  <link rel="icon" href="favicons/F1Favicon32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="favicons/F1Favicon192.png" sizes="192x192" type="image/png">
+  <link id="site-favicon" rel="icon" href="favicons/F1Favicon32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="favicons/apple-touch-icon.png" sizes="192x192">
+  <link rel="manifest" href="favicons/site.webmanifest">
+  <meta name="theme-color" content="#10131a">
+  <script src="scripts/theme-sync.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     // Get the saved theme immediately to prevent a white "flash" on load
-    const savedTheme = localStorage.getItem('user-theme') || 'f1';
+    const savedTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === 'function')
+      ? window.ThemeSync.getLocalTheme()
+      : (localStorage.getItem('user-theme') || 'f1');
     document.documentElement.setAttribute('data-theme', savedTheme);
   </script>
 </head>
@@ -20,14 +30,19 @@
   <header class="telemetry-header card">
     <div class="telemetry-header-inner">
       <h1>Productivity Telemetry</h1>
-      <div class="telemetry-header-actions">
+      <div class="telemetry-window-control">
         <label for="weekSelect" class="telemetry-label">Window</label>
         <select id="weekSelect" class="telemetry-select" onchange="updateView()">
           <option value="all">Full OJT Span</option>
         </select>
+    </div>  
+      <div class="telemetry-header-actions">
+        <label for="card" class="telemetry-label">Themes:</label>
         <button class="telemetry-btn btn-theme-f1" onclick="setTelemetryTheme('f1')">F1</button>
         <button class="telemetry-btn btn-theme-cadillac" onclick="setTelemetryTheme('cadillac')">Cadillac</button>
         <button class="telemetry-btn btn-theme-apx" onclick="setTelemetryTheme('apx')">APX GP</button>
+        <button class="telemetry-btn btn-theme-mclaren" onclick="setTelemetryTheme('mclaren')">McLaren</button>
+        <button class="telemetry-btn btn-theme-ferrari" onclick="setTelemetryTheme('ferrari')">Ferrari</button>
         <span class="export-divider">|</span>
         <button class="telemetry-btn btn-theme-kiki" onclick="setTelemetryTheme('kiki')">Kiki</button>
         <span class="export-divider">|</span>
@@ -63,7 +78,7 @@
     </div>
   </section>
 
-  <!-- Section: Key metrics (2 rows × 3 cols) -->
+  <!-- Section: Key metrics (2 rows Ã— 3 cols) -->
   <section class="telemetry-section">
     <h2 class="section-title">Overview</h2>
     <div class="telemetry-stats-grid">
@@ -94,7 +109,7 @@
           </label>
           <input type="range" id="paceSlider" min="1" max="16" step="0.5" value="8" oninput="updateTargetPace(this.value)">
         </div>
-        <p id="paceStatusMsg" class="stat-msg">Calculating…</p>
+        <p id="paceStatusMsg" class="stat-msg">Calculatingâ€¦</p>
       </div>
       <div class="card stat-card" id="efficiencyCard">
         <h3>Efficiency</h3>
@@ -106,7 +121,7 @@
       <div class="card stat-card" id="recoveryCard">
         <h3>Recovery & Fatigue</h3>
         <div class="stat-status">
-          <span id="fatigueIndicator" class="stat-emoji">🟢</span>
+          <span id="fatigueIndicator" class="stat-emoji">ðŸŸ¢</span>
           <span id="fatigueLabel" class="stat-status-label">Stable</span>
         </div>
         <small id="fatigueNote" class="stat-note">Sustainability</small>
@@ -114,7 +129,7 @@
       <div class="card stat-card" id="cogLoadCard">
         <h3>Cognitive Load</h3>
         <div class="stat-status">
-          <span id="cogIndicator" class="stat-emoji">🔋</span>
+          <span id="cogIndicator" class="stat-emoji">ðŸ”‹</span>
           <span id="cogLabel" class="stat-status-label">Normal</span>
         </div>
         <small id="cogNote" class="stat-note">OJT + Personal</small>
@@ -143,23 +158,25 @@
   <!-- Daily performance: delta + hour distribution + radar -->
   <section class="telemetry-section">
     <h2 class="section-title">Day-of-Week Dynamics</h2>
-    <div class="telemetry-charts-row telemetry-charts-three">
-      <div class="card chart-card">
+    <div class="telemetry-charts-row">
+      <div class="card chart-card chart-card-wide chart-card-delta">
         <h3>Session Delta (vs 8h)</h3>
-        <div class="chart-wrap">
+        <div class="chart-wrap chart-wrap-delta">
           <canvas id="deltaChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="telemetry-charts-row telemetry-dynamics-secondary">
+      <div class="card chart-card">
+        <h3>Hours Distribution</h3>
+        <div class="chart-wrap chart-wrap-hours">
+          <canvas id="hourDistChart"></canvas>
         </div>
       </div>
       <div class="card chart-card">
         <h3>Day-of-Week Velocity</h3>
-        <div class="chart-wrap">
+        <div class="chart-wrap chart-wrap-velocity">
           <canvas id="dayVelocityRadar"></canvas>
-        </div>
-      </div>
-      <div class="card chart-card">
-        <h3>Hours Distribution</h3>
-        <div class="chart-wrap">
-          <canvas id="hourDistChart"></canvas>
         </div>
       </div>
     </div>
@@ -204,14 +221,14 @@
         </div>
       </div>
     </div>
-  </section>
 
-  <!-- Identity Alignment (Larger / Dedicated) -->
-  <section class="telemetry-section">
-    <h2 class="section-title">Identity Alignment Analysis</h2>
-    <div class="card chart-card chart-card-wide">
-      <div class="chart-wrap chart-tall">
-        <canvas id="identityChart"></canvas>
+    <!-- Identity chart placed within L2 group -->
+    <div class="telemetry-charts-row">
+      <div class="card chart-card chart-card-wide">
+        <h3>Identity Alignment</h3>
+        <div class="chart-wrap chart-tall">
+          <canvas id="identityChart"></canvas>
+        </div>
       </div>
     </div>
   </section>
@@ -219,7 +236,7 @@
 
   <div id="loadingOverlay" class="loading-overlay" style="display: none;">
     <div class="loading-spinner"></div>
-    <p>Syncing telemetry…</p>
+    <p>Syncing telemetryâ€¦</p>
   </div>
 </div>
 
@@ -232,3 +249,5 @@
 <script src="scripts/telemetry.js"></script>
 </body>
 </html>
+
+
