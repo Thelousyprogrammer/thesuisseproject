@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DTR STORAGE AUX MODULE
  * Non-core storage utilities: migration, optimizer, restore, visualizer, and batch selectors.
  */
@@ -260,10 +260,10 @@ function updateStorageVisualizer() {
 
     if (status) {
         if (percent >= 80) {
-            status.textContent = "⚠️ Running low on storage. Consider optimizing or removing images.";
+            status.textContent = "âš ï¸ Running low on storage. Consider optimizing or removing images.";
             status.style.color = "var(--color-warning)";
         } else if (percent >= 95) {
-            status.textContent = "⚠️ Storage almost full! Run Optimize DB or remove images.";
+            status.textContent = "âš ï¸ Storage almost full! Run Optimize DB or remove images.";
             status.style.color = "var(--accent)";
         } else {
             status.textContent = percent < 50 ? "Storage healthy" : "Storage usage moderate";
@@ -299,10 +299,10 @@ function updateStorageVisualizer() {
             }
             if (idbStatus) {
                 if (idbPercent >= 80) {
-                    idbStatus.textContent = "⚠️ Running low on image storage. Consider optimizing or removing images.";
+                    idbStatus.textContent = "âš ï¸ Running low on image storage. Consider optimizing or removing images.";
                     idbStatus.style.color = "var(--color-warning)";
                 } else if (idbPercent >= 95) {
-                    idbStatus.textContent = "⚠️ Image storage almost full! Run Optimize DB or remove images.";
+                    idbStatus.textContent = "âš ï¸ Image storage almost full! Run Optimize DB or remove images.";
                     idbStatus.style.color = "var(--accent)";
                 } else {
                     idbStatus.textContent = idbPercent < 50 ? "Image storage healthy" : "Image storage usage moderate";
@@ -310,8 +310,8 @@ function updateStorageVisualizer() {
                 }
             }
         }).catch(() => {
-            if (idbUsedText) idbUsedText.textContent = "—";
-            if (idbQuotaText) idbQuotaText.textContent = "—";
+            if (idbUsedText) idbUsedText.textContent = "â€”";
+            if (idbQuotaText) idbQuotaText.textContent = "â€”";
             if (idbStatus) idbStatus.textContent = "Unable to read image storage.";
             if (idbBarTip) idbBarTip.textContent = "IndexedDB usage unavailable";
         });
@@ -335,7 +335,27 @@ async function optimizeStorage() {
 
     const btn = document.activeElement;
     const originalText = btn ? btn.innerText : "";
-    if (btn && btn.tagName === "BUTTON") btn.innerText = "Optimizing... ⏳";
+    if (btn && btn.tagName === "BUTTON") btn.innerText = "Optimizing... â³";
+    const liveStatusEl = document.getElementById("storageStatus");
+    const uiTickMs = 250;
+    let lastUiTick = 0;
+    let recordsDone = 0;
+
+    async function refreshLiveOptimizeUi(recordForSummary, force = false) {
+        const now = Date.now();
+        if (!force && (now - lastUiTick) < uiTickMs) return;
+        lastUiTick = now;
+        if (liveStatusEl) {
+            liveStatusEl.textContent = `Optimizing images... ${recordsDone}/${originalCount} record(s), ${imagesProcessed} image(s) compressed`;
+        }
+        if (typeof loadReflectionViewer === "function") {
+            await Promise.resolve(loadReflectionViewer());
+        }
+        if (recordForSummary && typeof showSummary === "function") {
+            await Promise.resolve(showSummary(recordForSummary));
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
 
     try {
         for (const record of targetRecords) {
@@ -372,15 +392,35 @@ async function optimizeStorage() {
                 }
                 record.imageIds = compressedIds;
                 record.images = [];
+                recordsDone++;
+                await refreshLiveOptimizeUi(record);
                 continue;
             }
             if (record.images && record.images.length) {
                 const imageIds = [];
                 for (const base64 of record.images) {
                     try {
-                        const compressed = base64.length > 150000 ? await compressImage(base64) : base64;
-                        if (base64.length > 150000) imagesProcessed++;
-                        const id = await saveImageToStore(compressed);
+                        const id = await saveImageToStore(base64);
+                        if (base64.length > 150000) {
+                            const originalEntry = typeof getImageEntryFromStore === "function"
+                                ? await getImageEntryFromStore(id)
+                                : null;
+                            if (originalEntry && typeof backupOriginalImageIfMissing === "function") {
+                                await backupOriginalImageIfMissing(id, originalEntry);
+                            }
+
+                            const compressed = await compressImage(base64);
+                            if (typeof putImageEntryToStore === "function") {
+                                await putImageEntryToStore({
+                                    id,
+                                    dataUrl: compressed,
+                                    sizeBytes: compressed.length,
+                                    optimizedAt: Date.now(),
+                                    isCompressed: true
+                                });
+                            }
+                            imagesProcessed++;
+                        }
                         imageIds.push(id);
                     } catch (e) {
                         console.warn("Failed to migrate/compress an image, skipping.", e);
@@ -388,6 +428,8 @@ async function optimizeStorage() {
                 }
                 record.imageIds = imageIds;
                 record.images = [];
+                recordsDone++;
+                await refreshLiveOptimizeUi(record);
             }
         }
 
@@ -397,6 +439,7 @@ async function optimizeStorage() {
         }
         if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
         refreshStorageActionSelectors();
+        await refreshLiveOptimizeUi(dailyRecords[dailyRecords.length - 1], true);
 
         alert(`Optimization complete!\n- Records processed: ${originalCount}\n- Images found and lightened: ${imagesProcessed}\n- Your storage is now much cleaner.`);
         
@@ -408,7 +451,6 @@ async function optimizeStorage() {
         if (btn && btn.tagName === "BUTTON") btn.innerText = originalText;
     }
 }
-
 async function restoreOptimizedImages(buttonEl) {
     if (!dailyRecords.length) return alert("No records found.");
 
@@ -423,9 +465,35 @@ async function restoreOptimizedImages(buttonEl) {
 
     const btn = buttonEl && buttonEl.tagName === "BUTTON" ? buttonEl : null;
     const originalText = btn ? btn.innerText : "";
-    if (btn) btn.innerText = "Restoring... ⏳";
+    if (btn) btn.innerText = "Restoring... â³";
+    const liveStatusEl = document.getElementById("storageStatus");
+    const totalIds = imageIds.length;
+    const uiTickMs = 250;
+    let lastUiTick = 0;
+    let processedCount = 0;
 
     let restoredCount = 0;
+    const idToRecord = new Map();
+    (targetRecords || []).forEach((record) => {
+        (record.imageIds || []).forEach((id) => idToRecord.set(id, record));
+    });
+
+    async function refreshLiveRestoreUi(recordForSummary, force = false) {
+        const now = Date.now();
+        if (!force && (now - lastUiTick) < uiTickMs) return;
+        lastUiTick = now;
+        if (liveStatusEl) {
+            liveStatusEl.textContent = `Restoring originals... ${processedCount}/${totalIds} image(s), ${restoredCount} restored`;
+        }
+        if (typeof loadReflectionViewer === "function") {
+            await Promise.resolve(loadReflectionViewer());
+        }
+        if (recordForSummary && typeof showSummary === "function") {
+            await Promise.resolve(showSummary(recordForSummary));
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
     try {
         for (const id of imageIds) {
             try {
@@ -436,12 +504,15 @@ async function restoreOptimizedImages(buttonEl) {
             } catch (e) {
                 console.warn("Failed to restore original image for id:", id, e);
             }
+            processedCount++;
+            await refreshLiveRestoreUi(idToRecord.get(id));
         }
 
         if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
         loadReflectionViewer();
         refreshStorageActionSelectors();
         if (dailyRecords.length) showSummary(dailyRecords[dailyRecords.length - 1]);
+        await refreshLiveRestoreUi(dailyRecords[dailyRecords.length - 1], true);
 
         if (restoredCount > 0) {
             alert(`Restore complete. ${restoredCount} image(s) restored to original quality from IndexedDB backup.`);

@@ -10,13 +10,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         hydrateOjtSettingsFromStorage();
     }
 
+    await initThemeSwitcher();
     COLORS = getThemeValues();
-    initThemeSwitcher();
 
     try {
         allLogs = await fetchTelemetryData();
         populateWeekSelector(allLogs);
         renderTelemetry(allLogs);
+        initTelemetryEntranceAnimations();
     } catch (err) {
         console.error("Telemetry Sync Failed:", err);
     } finally {
@@ -41,25 +42,91 @@ function getThemeValues() {
     };
 }
 
-function initThemeSwitcher() {
-    const savedTheme = localStorage.getItem('user-theme') || 'f1';
-    if (document.documentElement.getAttribute('data-theme') !== savedTheme) {
-        setTelemetryTheme(savedTheme);
-    } else {
-        setTimeout(() => {
-            COLORS = getThemeValues();
-            if (allLogs.length > 0) renderTelemetry(allLogs);
-        }, 100);
-    }
+async function initThemeSwitcher() {
+    const localTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === "function")
+        ? window.ThemeSync.getLocalTheme()
+        : (localStorage.getItem("user-theme") || "f1");
+
+    setTelemetryTheme(localTheme, { broadcast: false, rerender: false });
 }
 
-function setTelemetryTheme(themeName) {
-    document.documentElement.setAttribute('data-theme', themeName);
-    localStorage.setItem('user-theme', themeName);
+function setTelemetryTheme(themeName, options = {}) {
+    const opts = { rerender: true, ...options };
+    const done = (appliedTheme) => {
+        try { if (typeof updateFavicon === "function") updateFavicon(appliedTheme); } catch (_) {}
+        if (!opts.rerender) return;
+        setTimeout(() => {
+            COLORS = getThemeValues();
+            renderTelemetry(Array.isArray(allLogs) ? allLogs : []);
+        }, 50);
+    };
+
+    if (window.ThemeSync && typeof window.ThemeSync.setTheme === "function") {
+        window.ThemeSync.setTheme(themeName, options)
+            .then(done)
+            .catch(() => {
+                document.documentElement.setAttribute("data-theme", themeName);
+                localStorage.setItem("user-theme", themeName);
+                done(themeName);
+            });
+        return;
+    }
+
+    document.documentElement.setAttribute("data-theme", themeName);
+    localStorage.setItem("user-theme", themeName);
+    done(themeName);
+}
+
+document.addEventListener("theme:changed", () => {
     setTimeout(() => {
         COLORS = getThemeValues();
-        if (allLogs.length > 0) renderTelemetry(allLogs);
+        renderTelemetry(Array.isArray(allLogs) ? allLogs : []);
     }, 50);
+});
+
+let telemetryOnScreenObserver = null;
+
+function replayChartAnimationForCanvas(canvas) {
+    if (!canvas || typeof charts !== "object") return;
+    const chartList = Object.values(charts || {});
+    const instance = chartList.find((c) => c && c.canvas === canvas);
+    if (!instance || typeof instance.reset !== "function" || typeof instance.update !== "function") return;
+    try {
+        instance.reset();
+        instance.update();
+    } catch (_) {}
+}
+
+function initTelemetryEntranceAnimations() {
+    const cards = Array.from(document.querySelectorAll(".telemetry-page .stat-card, .telemetry-page .chart-card"));
+    if (!cards.length) return;
+
+    if (telemetryOnScreenObserver) {
+        try { telemetryOnScreenObserver.disconnect(); } catch (_) {}
+    }
+
+    telemetryOnScreenObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach((entry) => {
+            const card = entry.target;
+            const canvas = card.querySelector("canvas");
+
+            if (entry.isIntersecting) {
+                card.classList.add("telemetry-anim-in");
+                if (canvas) replayChartAnimationForCanvas(canvas);
+                return;
+            }
+
+            // Off-screen: reset so the element can animate again on re-entry.
+            card.classList.remove("telemetry-anim-in");
+        });
+    }, { threshold: 0.22, rootMargin: "0px 0px -8% 0px" });
+
+    cards.forEach((card, idx) => {
+        card.classList.add("telemetry-anim-ready");
+        card.classList.remove("telemetry-anim-in");
+        card.style.setProperty("--telemetry-stagger", `${Math.min(idx * 40, 480)}ms`);
+        telemetryOnScreenObserver.observe(card);
+    });
 }
 
 const safeUpdate = (id, value, color = null) => {
@@ -304,6 +371,7 @@ function renderTelemetry(logs, selectedWeek = "all") {
         renderContextualCharts(logs, selectedWeek);
         renderRadarChart(logs);
         renderHourDistChart(logs);
+        initTelemetryEntranceAnimations();
     }
 }
 

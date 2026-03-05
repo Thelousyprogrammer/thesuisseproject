@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DTR FAQ</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/theme.css">
+
+  <!-- favicon -->
+  <link rel="icon" href="favicons/F1Favicon32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="favicons/F1Favicon192.png" sizes="192x192" type="image/png">
+  <link id="site-favicon" rel="icon" href="favicons/F1Favicon32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="favicons/apple-touch-icon.png" sizes="192x192">
+  <link rel="manifest" href="favicons/site.webmanifest">
+  <meta name="theme-color" content="#10131a">
+
+  <script src="scripts/theme-sync.js"></script>
+  <script>
+    const savedTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === 'function')
+      ? window.ThemeSync.getLocalTheme()
+      : (localStorage.getItem('user-theme') || 'f1');
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
+
+  <style>
+    .faq-page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .faq-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .faq-list {
+      display: grid;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    details.card {
+      padding: 0;
+      margin: 0;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--accent);
+      list-style: none;
+      padding: 12px 14px;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details p {
+      margin: 0;
+      padding: 0 14px 14px;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <div class="faq-page">
+    <section class="card">
+      <div class="faq-header">
+        <div>
+          <h1 style="margin:0;">DTR FAQ</h1>
+          <p class="subtitle" style="margin-top:6px;">Common questions about using the Custom Daily Time Record tracker.</p>
+        </div>
+        <button type="button" onclick="window.location.href='index.html'">Back to DTR</button>
+      </div>
+    </section>
+
+    <section class="faq-list">
+      <details class="card" open>
+        <summary>What is this DTR for?</summary>
+        <p>This DTR is used to log your daily OJT hours, reflection, accomplishments, and telemetry so you can track progress and performance trends over time.</p>
+      </details>
+
+      <details class="card">
+        <summary>How do I add a daily entry?</summary>
+        <p>Go to the main page, set the date and hours worked, complete your notes, then click <strong>Save Day</strong>. Your record is saved locally in your browser.</p>
+      </details>
+
+      <details class="card">
+        <summary>Can I edit or delete entries?</summary>
+        <p>Yes. You can use the viewer/edit tools to update a specific record, delete the last entry, or clear all records from local storage.</p>
+      </details>
+
+      <details class="card">
+        <summary>What is Telemetry View?</summary>
+        <p>Telemetry View provides visual analytics such as pace, forecast completion, delta trends, and wellness indicators based on your DTR logs.</p>
+      </details>
+
+      <details class="card">
+        <summary>Where is my data stored?</summary>
+        <p>Data is stored in your browser (localStorage and IndexedDB for images). It is not automatically synced to a server unless you add one.</p>
+      </details>
+
+      <details class="card">
+        <summary>Why are some icons or style changes not updating immediately?</summary>
+        <p>Mobile browsers cache aggressively. Refresh the page, clear site data/cache, or reopen the tab after theme/icon updates.</p>
+      </details>
+    </section>
+  </div>
+
+  <script src="scripts/dtr-core.js"></script>
+  <script>
+    if (typeof updateFavicon === 'function') {
+      updateFavicon(savedTheme || 'f1');
+    }
+  </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DTR CORE MODULE
  * Configuration, Models, and Fundamental Utilities
  */
@@ -379,10 +379,59 @@ function getTodayFileName(prefix, ext) {
     return `${prefix}_${yyyy}-${mm}-${dd}.${ext}`;
 }
 
-function setTheme(themeName) {
-    document.documentElement.setAttribute('data-theme', themeName);
-    localStorage.setItem('user-theme', themeName);
-    console.log("Theme synced: " + themeName);
+function setTheme(themeName, options = {}) {
+    const fallbackTheme = (window.ThemeSync && typeof window.ThemeSync.sanitizeTheme === "function")
+        ? window.ThemeSync.sanitizeTheme(themeName)
+        : (themeName || "f1");
+
+    if (window.ThemeSync && typeof window.ThemeSync.setTheme === "function") {
+        window.ThemeSync.setTheme(fallbackTheme, options)
+            .then((appliedTheme) => {
+                try { updateFavicon(appliedTheme); } catch (_) {}
+                console.log("Theme synced:", appliedTheme);
+            })
+            .catch(() => {
+                document.documentElement.setAttribute("data-theme", fallbackTheme);
+                localStorage.setItem("user-theme", fallbackTheme);
+                try { updateFavicon(fallbackTheme); } catch (_) {}
+            });
+        return;
+    }
+
+    document.documentElement.setAttribute("data-theme", fallbackTheme);
+    localStorage.setItem("user-theme", fallbackTheme);
+    try { updateFavicon(fallbackTheme); } catch (_) {}
+    console.log("Theme synced:", fallbackTheme);
+}
+
+/**
+ * Update the page favicon based on the active theme.
+ * Looks for an element with id `site-favicon` and updates its href.
+ */
+function updateFavicon(themeName) {
+    const map = {
+        'f1': 'favicons/F1Favicon32.png',
+        'cadillac': 'favicons/CaddyFavicon32.png',
+        'apx': 'favicons/APXFavicon32.png',
+        'mclaren': 'favicons/McLFavicon32.png',
+        'kiki': 'favicons/KikiFavicon32.png',
+        'ferrari': 'favicons/FerrariFavicon32.png'
+        // fallback or other themes can be added here
+    };
+    const href = map[themeName] || map['f1'];
+    let link = document.getElementById('site-favicon');
+    if (!link) {
+        link = document.querySelector('link[rel~="icon"]');
+    }
+    if (!link) {
+        link = document.createElement('link');
+        link.id = 'site-favicon';
+        link.rel = 'icon';
+        document.head.appendChild(link);
+    }
+    link.href = href;
+    link.type = 'image/png';
+    link.sizes = '32x32';
 }
 
 function getIdentityAlignmentLabel(score) {
@@ -547,3 +596,5 @@ function buildTrajectorySeries({ logs = dailyRecords, paceOverride = null, start
 function calculateForecast(logs = dailyRecords, overridePace = null) {
     return calculateForecastUnified({ logs, paceOverride: overridePace });
 }
+
+
