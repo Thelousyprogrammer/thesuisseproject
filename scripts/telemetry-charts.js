@@ -76,6 +76,35 @@ function boostColor(hexOrRgba, boost = 0.18) {
     return hexOrRgba;
 }
 
+function withAlpha(color, alpha = 0.2) {
+    if (!color || typeof color !== "string") return color;
+    const clamped = Math.max(0, Math.min(1, Number(alpha) || 0));
+    const v = color.trim();
+
+    if (/^#([0-9a-fA-F]{6})$/.test(v)) {
+        const n = parseInt(v.slice(1), 16);
+        const r = (n >> 16) & 255;
+        const g = (n >> 8) & 255;
+        const b = n & 255;
+        return `rgba(${r}, ${g}, ${b}, ${clamped})`;
+    }
+
+    const rgbMatch = v.match(/^rgba?\(([^)]+)\)$/i);
+    if (rgbMatch) {
+        const parts = rgbMatch[1].split(",").map((p) => p.trim());
+        if (parts.length >= 3) {
+            const r = Number(parts[0]);
+            const g = Number(parts[1]);
+            const b = Number(parts[2]);
+            if ([r, g, b].every((num) => Number.isFinite(num))) {
+                return `rgba(${r}, ${g}, ${b}, ${clamped})`;
+            }
+        }
+    }
+
+    return color;
+}
+
 function renderTrajectoryChart(logs, customPace = null) {
     const canvas = document.getElementById('trajectoryChart');
     if (!canvas) return;
@@ -83,7 +112,7 @@ function renderTrajectoryChart(logs, customPace = null) {
     
     // Create GRADIENTS
     const gradAccent = ctx.createLinearGradient(0, 0, 0, 400);
-    gradAccent.addColorStop(0, boostColor(COLORS.accent, 0.22).replace('rgb(', 'rgba(').replace(')', ', 0.5)'));
+    gradAccent.addColorStop(0, withAlpha(boostColor(COLORS.accent, 0.22), 0.5));
     gradAccent.addColorStop(1, COLORS.fill);
 
     const lineAccent = boostColor(COLORS.accent, 0.2);
@@ -205,7 +234,7 @@ function renderEnergyZoneChart(logs) {
             datasets: [{
                 label: 'Sessions',
                 data: zoneOrder.map(z => zones[z]),
-                backgroundColor: [COLORS.text + '99', COLORS.warning, COLORS.good, COLORS.accent, COLORS.excellent],
+                backgroundColor: [withAlpha(COLORS.text, 0.6), COLORS.warning, COLORS.good, COLORS.accent, COLORS.excellent],
                 borderRadius: 4
             }]
         },
@@ -243,7 +272,7 @@ function renderIdentityChart(logs) {
                 datasets: [{
                     label: 'Alignment Score',
                     data: [0],
-                    backgroundColor: COLORS.grid
+                    backgroundColor: withAlpha(COLORS.grid, 0.35)
                 }]
             },
             options: {
@@ -260,6 +289,13 @@ function renderIdentityChart(logs) {
     const avgScores = sortedWeeks.map((w) => weeklyIdentity[w].sum / weeklyIdentity[w].count);
     const counts = sortedWeeks.map((w) => weeklyIdentity[w].count);
     const targetLine = sortedWeeks.map(() => 4);
+    const idTheme = {
+        excellent: boostColor(COLORS.excellent, 0.12),
+        good: boostColor(COLORS.good, 0.12),
+        warning: boostColor(COLORS.accent, 0.12),
+        accent: boostColor(COLORS.accent, 0.12),
+        text: boostColor(COLORS.text, 0.06)
+    };
 
     charts.identity = new Chart(ctx, {
         type: 'bar',
@@ -271,16 +307,16 @@ function renderIdentityChart(logs) {
                     label: 'Weekly Avg',
                     data: avgScores,
                     backgroundColor: avgScores.map((score) => {
-                        if (score >= 4) return COLORS.excellent + 'aa';
-                        if (score >= 3) return COLORS.good + 'aa';
-                        if (score >= 2) return COLORS.warning + 'aa';
-                        return COLORS.accent + 'aa';
+                        if (score >= 4) return withAlpha(idTheme.excellent, 0.67);
+                        if (score >= 3) return withAlpha(idTheme.good, 0.67);
+                        if (score >= 2) return withAlpha(idTheme.warning, 0.67);
+                        return withAlpha(idTheme.accent, 0.67);
                     }),
                     borderColor: avgScores.map((score) => {
-                        if (score >= 4) return COLORS.excellent;
-                        if (score >= 3) return COLORS.good;
-                        if (score >= 2) return COLORS.warning;
-                        return COLORS.accent;
+                        if (score >= 4) return idTheme.excellent;
+                        if (score >= 3) return idTheme.good;
+                        if (score >= 2) return idTheme.warning;
+                        return idTheme.accent;
                     }),
                     borderWidth: 2,
                     borderRadius: 4,
@@ -291,7 +327,7 @@ function renderIdentityChart(logs) {
                     type: 'line',
                     label: 'Target (4.0)',
                     data: targetLine,
-                    borderColor: COLORS.text + '88',
+                    borderColor: withAlpha(idTheme.text, 0.53),
                     borderDash: [5, 3],
                     pointRadius: 0,
                     tension: 0,
@@ -302,9 +338,9 @@ function renderIdentityChart(logs) {
                     type: 'line',
                     label: 'Entry Count',
                     data: counts,
-                    borderColor: boostColor(COLORS.accent, 0.2),
-                    backgroundColor: boostColor(COLORS.accent, 0.2) + '33',
-                    pointBackgroundColor: boostColor(COLORS.accent, 0.22),
+                    borderColor: idTheme.accent,
+                    backgroundColor: withAlpha(idTheme.accent, 0.2),
+                    pointBackgroundColor: idTheme.accent,
                     pointRadius: 3,
                     pointBorderColor: boostColor(COLORS.text, 0.1),
                     pointBorderWidth: 1,
@@ -395,7 +431,7 @@ function renderCandlestickChart(logs) {
                 {
                     label: 'Wick',
                     data: weeks.map(w => [w.low, w.high]),
-                    backgroundColor: weeks.map(w => w.close >= w.open ? COLORS.good + '88' : COLORS.accent + '88'),
+                    backgroundColor: weeks.map(w => w.close >= w.open ? withAlpha(COLORS.good, 0.53) : withAlpha(COLORS.accent, 0.53)),
                     borderColor: 'transparent',
                     barPercentage: 0.1,
                     grouped: false,
@@ -462,7 +498,7 @@ function renderContextualCharts(logs, selectedWeek) {
                     {
                         label: 'Daily Delta',
                         data: deltas,
-                        backgroundColor: deltas.map(d => d >= 0 ? COLORS.good + '88' : COLORS.accent + '88'),
+                        backgroundColor: deltas.map(d => d >= 0 ? withAlpha(COLORS.good, 0.53) : withAlpha(COLORS.accent, 0.53)),
                         borderColor: deltas.map(d => d >= 0 ? COLORS.good : COLORS.accent),
                         borderWidth: 1,
                         borderRadius: 2,
@@ -562,7 +598,7 @@ function renderRadarChart(logs) {
                 label: 'Avg Hours',
                 data: data,
                 borderColor: boostColor(COLORS.accent, 0.22),
-                backgroundColor: boostColor(COLORS.accent, 0.22) + '33',
+                backgroundColor: withAlpha(boostColor(COLORS.accent, 0.22), 0.12),
                 borderWidth: 3,
                 pointBackgroundColor: boostColor(COLORS.accent, 0.24),
                 pointRadius: 3
@@ -612,7 +648,7 @@ function renderHourDistChart(logs) {
             datasets: [{
                 data: counts,
                 backgroundColor: [
-                    COLORS.text + '99',
+                    withAlpha(COLORS.text, 0.6),
                     COLORS.warning,
                     COLORS.accent,
                     COLORS.good,

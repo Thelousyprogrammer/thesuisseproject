@@ -337,9 +337,52 @@ async function saveRecord(date, hours, reflection, accomplishments, tools, image
     const normalizedDate = dateKey || date;
     const record = new DailyRecord(normalizedDate, hours, reflection, accomplishments, tools, [], l2Data, imageIds || []);
     const previous = [...dailyRecords];
-    dailyRecords = dailyRecords.filter((r) => (toGmt8DateKey(r.date) || r.date) !== normalizedDate);
-    dailyRecords.push(record);
-    dailyRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const duplicateIndex = dailyRecords.findIndex((r) => (toGmt8DateKey(r.date) || r.date) === normalizedDate);
+
+    if (duplicateIndex !== -1) {
+        const resolution = await resolveDateConflictModal({
+            incomingDate: normalizedDate,
+            existingDate: toGmt8DateKey(dailyRecords[duplicateIndex].date) || dailyRecords[duplicateIndex].date
+        });
+        if (!resolution) return;
+
+        if (resolution.action === "replace") {
+            dailyRecords.splice(duplicateIndex, 1);
+            dailyRecords.push(record);
+        } else {
+            const nextIncomingDate = resolution.newDate;
+            const nextExistingDate = resolution.existingDate;
+            const start = typeof getCurrentOjtStartDate === "function" ? getCurrentOjtStartDate() : null;
+
+            if (start && ((nextIncomingDate && nextIncomingDate < start) || (nextExistingDate && nextExistingDate < start))) {
+                alert(`DTR Date cannot be earlier than OJT Starting Date (${start}).`);
+                return;
+            }
+
+            if (!nextIncomingDate || !nextExistingDate || nextIncomingDate === nextExistingDate) {
+                alert("Incoming and existing dates must both be valid and different.");
+                return;
+            }
+
+            const incomingClash = dailyRecords.findIndex((r, idx) =>
+                idx !== duplicateIndex && (toGmt8DateKey(r.date) || r.date) === nextIncomingDate
+            );
+            const existingClash = dailyRecords.findIndex((r, idx) =>
+                idx !== duplicateIndex && (toGmt8DateKey(r.date) || r.date) === nextExistingDate
+            );
+            if (incomingClash !== -1 || existingClash !== -1) {
+                alert("One of the selected dates is already used by another record.");
+                return;
+            }
+
+            dailyRecords[duplicateIndex].date = nextExistingDate;
+            record.date = nextIncomingDate;
+            dailyRecords.push(record);
+        }
+    } else {
+        dailyRecords.push(record);
+    }
+    dailyRecords.sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
 
     if (!await persistDTR(dailyRecords)) {
         dailyRecords = previous;
@@ -360,4 +403,84 @@ async function saveRecord(date, hours, reflection, accomplishments, tools, image
 
     clearDTRForm();
     alert("Daily DTR saved and form cleared!");
+}
+
+function resolveDateConflictModal({ incomingDate, existingDate }) {
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = (value) => {
+            if (settled) return;
+            settled = true;
+            modal.remove();
+            resolve(value);
+        };
+
+        const modal = document.createElement("div");
+        modal.style.cssText = [
+            "position:fixed",
+            "inset:0",
+            "background:rgba(0,0,0,0.7)",
+            "display:flex",
+            "align-items:center",
+            "justify-content:center",
+            "z-index:10000",
+            "padding:16px"
+        ].join(";");
+
+        const panel = document.createElement("div");
+        panel.style.cssText = [
+            "width:min(540px,100%)",
+            "background:var(--panel)",
+            "border:1px solid var(--border)",
+            "border-radius:10px",
+            "padding:16px",
+            "box-shadow:0 10px 30px rgba(0,0,0,0.45)",
+            "color:var(--text)"
+        ].join(";");
+
+        panel.innerHTML = `
+            <h3 style="margin:0 0 10px 0; color:var(--accent);">Date Conflict Detected</h3>
+            <p style="margin:0 0 12px 0;">A record already exists for this date. Choose how to proceed.</p>
+            <div style="display:grid; grid-template-columns:1fr; gap:10px; margin-bottom:12px;">
+                <label style="display:flex; flex-direction:column; gap:4px;">
+                    <span>New Entry Date</span>
+                    <input id="conflictNewDate" type="date" value="${incomingDate}" style="background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:8px;">
+                </label>
+                <label style="display:flex; flex-direction:column; gap:4px;">
+                    <span>Existing Record Date</span>
+                    <input id="conflictExistingDate" type="date" value="${existingDate}" style="background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:8px;">
+                </label>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end;">
+                <button id="conflictCancelBtn" type="button" style="background:transparent; color:var(--text); border:1px solid var(--border);">Cancel</button>
+                <button id="conflictReplaceBtn" type="button" style="background:var(--accent); color:#fff;">Replace Existing</button>
+                <button id="conflictKeepBothBtn" type="button" style="background:var(--color-good); color:#fff;">Keep Both (Apply Dates)</button>
+            </div>
+        `;
+        modal.appendChild(panel);
+        document.body.appendChild(modal);
+
+        const newInput = panel.querySelector("#conflictNewDate");
+        const existingInput = panel.querySelector("#conflictExistingDate");
+
+        panel.querySelector("#conflictCancelBtn").addEventListener("click", () => finish(null));
+        panel.querySelector("#conflictReplaceBtn").addEventListener("click", () => {
+            finish({
+                action: "replace",
+                newDate: (newInput && newInput.value) || incomingDate,
+                existingDate: (existingInput && existingInput.value) || existingDate
+            });
+        });
+        panel.querySelector("#conflictKeepBothBtn").addEventListener("click", () => {
+            finish({
+                action: "keep-both",
+                newDate: (newInput && newInput.value) || incomingDate,
+                existingDate: (existingInput && existingInput.value) || existingDate
+            });
+        });
+
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) finish(null);
+        });
+    });
 }
