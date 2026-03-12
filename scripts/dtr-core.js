@@ -349,6 +349,21 @@ function getWeekNumber(date, reference = OJT_START) {
     return Math.floor(diff / (7 * DAY_MS)) + 1;
 }
 
+function getDayNumberInOjtWeek(date, reference = OJT_START) {
+    const d = parseDateKeyGmt8(toGmt8DateKey(date));
+    const ref = parseDateKeyGmt8(toGmt8DateKey(reference));
+    if (!d || !ref) return 1;
+    const diff = d.getTime() - ref.getTime();
+    if (diff < 0) return 1;
+    return Math.floor(diff / DAY_MS) % 7 + 1;
+}
+
+function getTimelineWeekDayLabel(date, reference = OJT_START) {
+    const week = getWeekNumber(date, reference);
+    const day = getDayNumberInOjtWeek(date, reference);
+    return `Week: ${week} | Day: ${day}`;
+}
+
 function getTotalHours() {
     return dailyRecords.reduce((sum, r) => sum + r.hours, 0);
 }
@@ -404,6 +419,34 @@ function setTheme(themeName, options = {}) {
     console.log("Theme synced:", fallbackTheme);
 }
 
+function syncF1LightToggleLabel(buttonId = "f1LightToggleBtn") {
+    const btn = document.getElementById(buttonId);
+    if (!btn) return;
+    const activeTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === "function")
+        ? window.ThemeSync.getLocalTheme()
+        : (localStorage.getItem("user-theme") || "f1");
+    const isF1Family = activeTheme === "f1" || activeTheme === "f1-light";
+    if (!isF1Family) {
+        btn.textContent = "Light: N/A";
+        btn.setAttribute("aria-pressed", "false");
+        btn.disabled = true;
+        return;
+    }
+    btn.disabled = false;
+    const isLight = activeTheme === "f1-light";
+    btn.textContent = isLight ? "Light: On" : "Light: Off";
+    btn.setAttribute("aria-pressed", isLight ? "true" : "false");
+}
+
+function toggleF1LightMode() {
+    const activeTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === "function")
+        ? window.ThemeSync.getLocalTheme()
+        : (localStorage.getItem("user-theme") || "f1");
+    if (activeTheme !== "f1" && activeTheme !== "f1-light") return;
+    const nextTheme = activeTheme === "f1-light" ? "f1" : "f1-light";
+    setTheme(nextTheme);
+}
+
 /**
  * Update the page favicon based on the active theme.
  * Looks for an element with id `site-favicon` and updates its href.
@@ -411,6 +454,7 @@ function setTheme(themeName, options = {}) {
 function updateFavicon(themeName) {
     const map = {
         'f1': 'favicons/F1Favicon32.png',
+        'f1-light': 'favicons/F1Favicon32.png',
         'cadillac': 'favicons/CaddyFavicon32.png',
         'apx': 'favicons/APXFavicon32.png',
         'mclaren': 'favicons/McLFavicon32.png',

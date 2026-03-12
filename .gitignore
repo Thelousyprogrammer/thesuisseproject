@@ -1,0 +1,7 @@
+logs
+*.log
+
+# Ignore Files
+node_modules/
+.VSCodeCounter
+.vscode

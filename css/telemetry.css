@@ -35,6 +35,11 @@
   gap: 10px;
 }
 
+.theme-switch-grid-telemetry {
+  margin-top: 0;
+  flex: 1 1 560px;
+}
+
 .telemetry-label {
   font-weight: bold;
   color: var(--accent);
@@ -562,14 +567,13 @@
 /* ===== SIMULATION BOX ===== */
 .sim-card {
   border: 1px dashed var(--accent);
-  background: rgba(255, 30, 0, 0.03);
+  background: var(--panel);
   transition: all 0.3s ease;
 }
 
 .sim-card.active {
   border-style: solid;
   box-shadow: 0 0 15px var(--chart-highlight, rgba(255, 255, 255, 0.2));
-  background: var(--chart-ideal, rgba(255, 255, 255, 0.08));
 }
 
 .sim-header {

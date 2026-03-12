@@ -12,10 +12,24 @@ body {
   margin: 0;
   padding: 0;
   transition: background 0.3s ease;
-  font-family: var(--font-body, "Segoe UI", sans-serif);
+  font-family: var(--font-body, "Noto Sans", "JetBrains Mono Nerd Font", "Segoe UI", sans-serif);
   background: var(--bg);
   color: var(--text);
   transition: all 0.3s ease;
+}
+
+html.lang-cjk body,
+html.lang-cjk input,
+html.lang-cjk textarea,
+html.lang-cjk select,
+html.lang-cjk button,
+html.lang-cjk label,
+html.lang-cjk p,
+html.lang-cjk span,
+html.lang-cjk h1,
+html.lang-cjk h2,
+html.lang-cjk h3 {
+  font-family: "Noto Sans", var(--font-body, "JetBrains Mono Nerd Font", sans-serif) !important;
 }
 
 .container {
@@ -220,6 +234,34 @@ button:hover {
 .telemetry-btn:hover {
   background: var(--accent);
   color: #fff;
+}
+
+.theme-switch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.theme-switch-card {
+  border-radius: 8px;
+  padding: 6px 8px;
+  min-height: 32px;
+  text-align: center;
+  font-size: 10.5px;
+  letter-spacing: 0.25px;
+  line-height: 1.1;
+}
+
+.light-toggle-btn {
+  padding: 3px 9px;
+  min-height: 26px;
+  font-size: 11px;
+}
+
+.light-toggle-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .telemetry-grid {
@@ -529,7 +571,8 @@ button:hover {
   z-index: 30;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
-.storage-bar-host:hover .storage-hover-tip {
+.storage-bar-host:hover .storage-hover-tip,
+.storage-bar-host:active .storage-hover-tip {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(0);
@@ -622,6 +665,10 @@ button:hover {
   button {
     width: 100%;
     margin-bottom: 8px;
+  }
+
+  .theme-switch-grid {
+    grid-template-columns: 1fr;
   }
 
   .sort-controls {

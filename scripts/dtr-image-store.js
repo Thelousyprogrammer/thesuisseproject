@@ -261,7 +261,8 @@ function getImageStoreUsageBytes() {
                 const bytes = items.reduce((sum, item) => {
                     if (!item) return sum;
                     if (item.blob instanceof Blob) return sum + (item.blob.size || 0);
-                    if (typeof item.dataUrl === "string") return sum + item.dataUrl.length;
+                    // Mobile IDB strings count as 2 bytes per character under iOS quota enforcement
+                    if (typeof item.dataUrl === "string") return sum + (item.dataUrl.length * 2);
                     return sum;
                 }, 0);
                 resolve(bytes);

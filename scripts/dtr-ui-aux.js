@@ -25,7 +25,8 @@ function updateReflectionWeekOptions() {
     if (!select) return;
 
     const currentValue = select.value || "current";
-    select.innerHTML = '<option value="current">Current Week</option>';
+    const currentWeekLabel = "Current Week";
+    select.innerHTML = `<option value="current">${currentWeekLabel}</option>`;
 
     const weeks = [...new Set(dailyRecords.map(r => getWeekNumber(r.date)))].sort((a, b) => b - a);
     weeks.forEach((w) => {

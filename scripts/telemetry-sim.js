@@ -3,6 +3,91 @@
  * Handles synthetic data injection and what-if scenarios
  */
 
+function _getSimStartDate() {
+    const modeEl = document.getElementById("simStartMode");
+    const mode = modeEl ? modeEl.value : "last";
+    if (mode === "specific") {
+        const dateEl = document.getElementById("simStartDate");
+        const dateVal = dateEl ? dateEl.value : "";
+        if (dateVal) {
+            // Return a Date set to midnight of that day
+            const d = new Date(dateVal + "T00:00:00");
+            if (!isNaN(d.getTime())) return d;
+        }
+    }
+    // Default: after last log
+    if (allLogs.length > 0) {
+        const sorted = [...allLogs].sort((a,b) => new Date(a.date) - new Date(b.date));
+        return new Date(sorted[sorted.length - 1].date);
+    }
+    return new Date();
+}
+
+function toggleSimStartDate(mode) {
+    const group = document.getElementById("simSpecificDateGroup");
+    if (!group) return;
+    group.style.display = mode === "specific" ? "flex" : "none";
+    if (mode === "specific") {
+        const input = document.getElementById("simStartDate");
+        if (input && !input.value) {
+            // Default to today
+            input.value = toGmt8DateKey(new Date());
+        }
+    }
+    // Re-trigger preview with new start date
+    previewSimulation();
+}
+
+function _buildSimPreviewLogs(simHours, simDaysToAdd) {
+    const lastDate = _getSimStartDate();
+    const previewEntries = [];
+    for (let i = 1; i <= simDaysToAdd; i++) {
+        const nextDate = new Date(lastDate);
+        nextDate.setDate(nextDate.getDate() + i);
+        previewEntries.push({
+            date: nextDate.toISOString().split('T')[0],
+            hours: simHours
+        });
+    }
+    return [...allLogs, ...previewEntries];
+}
+
+function previewSimulation() {
+    if (!isSimulating) return;
+    if (typeof charts === 'undefined' || !charts || !charts.trajectory) return;
+    if (typeof buildTrajectorySeries !== 'function') return;
+
+    const simHoursRaw = parseFloat(document.getElementById("simHours").value);
+    const simHours = Number.isFinite(simHoursRaw) ? Math.max(0, simHoursRaw) : 8;
+    const simDaysToAdd = parseInt(document.getElementById("simDays").value) || 5;
+
+    const previewLogs = _buildSimPreviewLogs(simHours, simDaysToAdd);
+
+    const slider = document.getElementById("paceSlider");
+    const currentPace = slider ? parseFloat(slider.value) : null;
+
+    const series = buildTrajectorySeries({ logs: previewLogs, paceOverride: currentPace });
+
+    charts.trajectory.data.labels = series.labels;
+    charts.trajectory.data.datasets[0].data = series.actualCumulative;
+    charts.trajectory.data.datasets[1].data = series.projectedCumulative;
+    charts.trajectory.data.datasets[2].data = series.idealCumulative;
+
+    const targetHours = series.forecast ? series.forecast.targetHours : getCurrentRequiredOjtHours();
+    const allActual = series.actualCumulative.filter(v => v != null);
+    const allProjected = series.projectedCumulative.filter(v => v != null);
+    const yMaxSource = Math.max(
+        targetHours,
+        allActual.length ? Math.max(...allActual) : 0,
+        allProjected.length ? Math.max(...allProjected) : 0
+    );
+    if (charts.trajectory.options && charts.trajectory.options.scales && charts.trajectory.options.scales.y) {
+        charts.trajectory.options.scales.y.max = Math.ceil(yMaxSource / 50) * 50 + 50;
+    }
+
+    charts.trajectory.update("none");
+}
+
 function toggleSimulation() {
     isSimulating = !isSimulating;
     const btn = document.getElementById("simToggleBtn");
@@ -17,12 +102,25 @@ function toggleSimulation() {
         resetBtn.style.display = "inline-block";
         if (card) card.classList.add("active");
         realLogs = JSON.parse(JSON.stringify(allLogs)); // Snapshot current state
+
+        // Wire live preview listeners
+        const simHoursInput = document.getElementById("simHours");
+        const simDaysInput = document.getElementById("simDays");
+        if (simHoursInput) simHoursInput.addEventListener("input", previewSimulation);
+        if (simDaysInput) simDaysInput.addEventListener("input", previewSimulation);
     } else {
         btn.innerText = "Enter Sim Mode";
         btn.classList.replace("btn-accent", "btn-dim");
         controls.style.display = "none";
         resetBtn.style.display = "none";
         if (card) card.classList.remove("active");
+
+        // Remove live preview listeners on exit
+        const simHoursInput = document.getElementById("simHours");
+        const simDaysInput = document.getElementById("simDays");
+        if (simHoursInput) simHoursInput.removeEventListener("input", previewSimulation);
+        if (simDaysInput) simDaysInput.removeEventListener("input", previewSimulation);
+
         resetTelemetry();
     }
 }
@@ -34,14 +132,7 @@ function runSimulation() {
     const simHours = Number.isFinite(simHoursRaw) ? Math.max(0, simHoursRaw) : 8;
     const simDaysToAdd = parseInt(document.getElementById("simDays").value) || 5;
     
-    // Start from the last date in allLogs or TODAY
-    let lastDate;
-    if (allLogs.length > 0) {
-        const sorted = [...allLogs].sort((a,b) => new Date(a.date) - new Date(b.date));
-        lastDate = new Date(sorted[sorted.length - 1].date);
-    } else {
-        lastDate = new Date();
-    }
+    const lastDate = _getSimStartDate();
 
     const newEntries = [];
     for (let i = 1; i <= simDaysToAdd; i++) {
@@ -62,7 +153,16 @@ function runSimulation() {
         });
     }
 
-    allLogs = [...allLogs, ...newEntries];
+    // Merge: if specific date mode, override any existing record on same date
+    const modeEl = document.getElementById("simStartMode");
+    const isSpecific = modeEl && modeEl.value === "specific";
+    let merged = [...allLogs];
+    if (isSpecific) {
+        const newDateSet = new Set(newEntries.map(e => e.date));
+        merged = merged.filter(r => !newDateSet.has(toGmt8DateKey(r.date) || r.date));
+    }
+    allLogs = [...merged, ...newEntries];
+    allLogs.sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
     
     // Re-render EVERYTHING
     renderTelemetry(allLogs);

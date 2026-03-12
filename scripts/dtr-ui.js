@@ -41,7 +41,8 @@ function updateWeeklyCounter(dateInput) {
 
     const counterEl = document.getElementById("weeklyCounter");
     if (counterEl) {
-        counterEl.innerHTML = `Week ${weekNum} Hours: <span style="color:${color}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span>`;
+        const weekLabel = `Week ${weekNum}`;
+        counterEl.innerHTML = `${weekLabel} Hours: <span style="color:${color}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span>`;
     }
 }
 
@@ -78,6 +79,7 @@ function showSummary(record) {
     let overallColor = (totalHours >= targetHours) ? DTR_COLORS.excellent : DTR_COLORS.good;
     
     const weekNum = record.date ? getWeekNumber(record.date) : null;
+    const timelineWeekDayLabel = record.date ? getTimelineWeekDayLabel(record.date) : "Week: 1 | Day: 1";
     const weekHours = weekNum ? getWeekHours(weekNum) : 0;
     const maxWeeklyHours = DAILY_TARGET_HOURS * 7;
     let weekColor = DTR_COLORS.neutral;
@@ -85,13 +87,24 @@ function showSummary(record) {
     else if (weekHours < maxWeeklyHours) weekColor = DTR_COLORS.good;
     else weekColor = DTR_COLORS.excellent;
 
-    const identityLabels = { 0:"Not Set", 1:"1 - Misaligned", 2:"2 - Improving", 3:"3 - On Track", 4:"4 - High Growth", 5:"5 - Fully Aligned"};
+    const identityLabels = {
+        0: "Not Set",
+        1: "1 - Misaligned",
+        2: "2 - Improving",
+        3: "3 - On Track",
+        4: "4 - High Growth",
+        5: "5 - Fully Aligned"
+    };
     const commuteEff = record.commuteTotal > 0 ? ((record.commuteProductive / record.commuteTotal) * 100).toFixed(1) + "%" : "N/A";
 
     // OJT Forecast logic Alignment (SINGLE SOURCE OF TRUTH)
     const f = calculateForecastUnified({ logs: dailyRecords });
     const absDelta = Math.abs(f.currentStatusDelta).toFixed(1);
-    const statusText = f.currentStatusDelta > 0 ? `Ahead (+${absDelta}h)` : (f.currentStatusDelta < 0 ? `Behind (-${absDelta}h)` : "On Track");
+    const statusText = f.currentStatusDelta > 0
+        ? "Ahead (+" + absDelta + "h)"
+        : (f.currentStatusDelta < 0
+            ? "Behind (" + absDelta + "h)"
+            : "On Track");
 
     s.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 20px;">
@@ -101,6 +114,7 @@ function showSummary(record) {
                     <p style="margin:0;"><strong>Date:</strong> ${record.date}</p>
                     <span style="font-size:0.8em; color:${f.isAhead ? DTR_COLORS.good : DTR_COLORS.warning}; font-family:var(--font-body); text-transform:uppercase; font-weight:bold;">${statusText}</span>
                 </div>
+                <p><strong>Timeline:</strong> ${timelineWeekDayLabel}</p>
                 <p><strong>Hours Worked:</strong> ${record.hours}</p>
                 <p><strong>Delta:</strong> <span style="color:${deltaColor}; font-weight:bold;">${record.delta >= 0 ? "+" : ""}${record.delta.toFixed(2)} hours</span></p>
                 <p><strong>Trend:</strong> <span style="color:${trendColor}; font-weight:bold;">${trendLabel}</span></p>
@@ -135,12 +149,13 @@ function showSummary(record) {
         const container = s.querySelector(".summary-images");
         if (container) {
             getRecordImageUrls(record).then((urls) => {
+                const sessionLabel = "Session";
                 urls.forEach((src) => {
                     if (!src || typeof src !== "string") return;
                     const img = document.createElement("img");
                     img.src = src;
                     img.setAttribute("style", "width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border); transition: transform 0.2s;");
-                    img.alt = "Session";
+                    img.alt = sessionLabel;
                     img.onerror = function () { this.style.visibility = "hidden"; };
                     img.onmouseover = function () { this.style.transform = "scale(2.5)"; this.style.zIndex = "100"; };
                     img.onmouseout = function () { this.style.transform = "scale(1)"; this.style.zIndex = "1"; };
@@ -157,7 +172,8 @@ function loadReflectionViewer() {
     viewer.innerHTML = "";
 
     if (dailyRecords.length === 0) {
-        viewer.innerHTML = `<p class="empty">No reflections saved yet.</p>`;
+        const emptyText = "No reflections saved yet.";
+        viewer.innerHTML = `<p class="empty">${emptyText}</p>`;
         return;
     }
 
@@ -178,7 +194,8 @@ function loadReflectionViewer() {
     const sourceRecords = sourceEntries.map(entry => entry.r);
 
     if (!sourceRecords.length) {
-        viewer.innerHTML = `<p class="empty">No reflections for the selected week.</p>`;
+        const emptyText = "No reflections for the selected week.";
+        viewer.innerHTML = `<p class="empty">${emptyText}</p>`;
         return;
     }
 
@@ -187,11 +204,13 @@ function loadReflectionViewer() {
         duplicateNotice.style.margin = "0 0 10px 0";
         duplicateNotice.style.fontSize = "0.9em";
         duplicateNotice.style.opacity = "0.8";
-        duplicateNotice.textContent = `${duplicateCount} duplicate record(s) were hidden in the Reflection Viewer.`;
+        duplicateNotice.textContent = "Duplicate records hidden in the Reflection Viewer.";
         viewer.appendChild(duplicateNotice);
     }
 
     const maxWeeklyHours = DAILY_TARGET_HOURS * 7;
+    const fallbackWeek = dailyRecords.length > 0 ? getWeekNumber(dailyRecords[dailyRecords.length - 1].date) : 1;
+    const weekHoursLabel = "Week " + (weekFilter || fallbackWeek) + " Hours";
     if (weekFilter) {
         const weekHours = getWeekHours(weekFilter);
         let weekColor = DTR_COLORS.neutral;
@@ -200,7 +219,7 @@ function loadReflectionViewer() {
         const range = getWeekDateRange(weekFilter);
         const counterDiv = document.createElement("div");
         counterDiv.style.marginBottom = "10px";
-        counterDiv.innerHTML = `<strong>Week ${weekFilter} Hours:</strong> <span style="color:${weekColor}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span> <span style="opacity:0.7; font-size:0.9em;">(${range.start} - ${range.end})</span>`;
+        counterDiv.innerHTML = `<strong>${weekHoursLabel}:</strong> <span style="color:${weekColor}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span> <span style="opacity:0.7; font-size:0.9em;">(${range.start} - ${range.end})</span>`;
         viewer.appendChild(counterDiv);
     } else {
         const latestDate = dailyRecords[dailyRecords.length - 1].date;
@@ -211,7 +230,7 @@ function loadReflectionViewer() {
         else if (currentWeekHours < maxWeeklyHours) weekColor = DTR_COLORS.good;
         const counterDiv = document.createElement("div");
         counterDiv.style.marginBottom = "10px";
-        counterDiv.innerHTML = `<strong>Week ${currentWeek} Hours:</strong> <span style="color:${weekColor}; font-weight:bold;">${currentWeekHours} / ${maxWeeklyHours}</span>`;
+        counterDiv.innerHTML = `<strong>${weekHoursLabel}:</strong> <span style="color:${weekColor}; font-weight:bold;">${currentWeekHours} / ${maxWeeklyHours}</span>`;
         viewer.appendChild(counterDiv);
     }
 
@@ -235,6 +254,7 @@ function loadReflectionViewer() {
     displayItems.forEach(item => {
         const r = item.r;
         const weekNum = getWeekNumber(r.date);
+        const timelineWeekDayLabel = getTimelineWeekDayLabel(r.date);
         const weekHours = getWeekHours(weekNum);
         let deltaColor = DTR_COLORS.neutral;
         if (r.delta <= 0) deltaColor = DTR_COLORS.warning;
@@ -248,7 +268,14 @@ function loadReflectionViewer() {
         const div = document.createElement("div");
         div.className = "reflection-item";
 
-        const identityLabels = { 0:"Not Set", 1:"1 - Misaligned", 2:"2 - Improving", 3:"3 - On Track", 4:"4 - High Growth", 5:"5 - Fully Aligned"};
+        const identityLabels = { 
+            0: "Not Set", 
+            1: "1 - Drifting", 
+            2: "2 - Re-centering", 
+            3: "3 - Aligned", 
+            4: "4 - Compounding", 
+            5: "5 - Mission Locked"
+        };
         const commuteEff = r.commuteTotal > 0 ? ((r.commuteProductive / r.commuteTotal) * 100).toFixed(1) + "%" : "N/A";
 
         const toolsHTML = (Array.isArray(r.tools) && r.tools.length)
@@ -257,13 +284,13 @@ function loadReflectionViewer() {
 
         div.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong>${item.originalIndex + 1}. ${r.date} (Week ${weekNum})</strong>
+                <strong>${item.originalIndex + 1}. ${r.date} (${timelineWeekDayLabel})</strong>
                 <button class="edit-btn" data-index="${item.originalIndex}">✎ Edit</button>
             </div>
             <p>${r.reflection}</p>
             <div style="margin: 8px 0; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px; border-left: 3px solid var(--accent); font-size: 0.85em;">
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
-                    <div><strong>Hours:</strong> ${r.hours}h (Δ ${r.delta.toFixed(2)})</div>
+                    <div><strong>Hours Worked:</strong> ${r.hours}h (Δ ${r.delta.toFixed(2)})</div>
                     <div><strong>Trend:</strong> <span style="color:${item.trendColor}">${item.trendLabel}</span></div>
                     <div><strong>Personal:</strong> ${r.personalHours || 0}h</div>
                     <div><strong>Sleep:</strong> ${r.sleepHours || 0}h</div>
@@ -392,7 +419,7 @@ async function finalizeSave(date, hours, reflection, accomplishments, tools, ima
         idx !== editingIndex && (toGmt8DateKey(r.date) || r.date) === normalizedDate
     );
     if (duplicateIndex !== -1) {
-        if (!confirm(`A DTR record for ${normalizedDate} already exists. Overwrite it with this edit?`)) {
+        if (!confirm("A DTR record for " + normalizedDate + " already exists. Overwrite it with this edit?")) {
             return;
         }
         dailyRecords.splice(duplicateIndex, 1);

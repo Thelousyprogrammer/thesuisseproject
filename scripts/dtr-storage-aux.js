@@ -3,60 +3,8 @@
  * Non-core storage utilities: migration, optimizer, restore, visualizer, and batch selectors.
  */
 
-async function migrateImagesToIndexedDB(targetRecords = null) {
-    if (typeof saveImageToStore !== "function") {
-        return { recordsUpdated: 0, imagesMigrated: 0, failedImages: 0, changed: false };
-    }
-
-    let changed = false;
-    let recordsUpdated = 0;
-    let imagesMigrated = 0;
-    let failedImages = 0;
-
-    const sourceRecords = Array.isArray(targetRecords) ? targetRecords : dailyRecords;
-    for (const record of sourceRecords) {
-        if (!record.images || !record.images.length) continue;
-        const legacyCount = record.images.length;
-        const imageIds = [];
-        for (const dataUrl of record.images) {
-            if (!dataUrl || typeof dataUrl !== "string") continue;
-            try {
-                const id = await saveImageToStore(dataUrl);
-                imageIds.push(id);
-                imagesMigrated++;
-            } catch (e) {
-                console.warn("Migration: failed to store one image, skipping.", e);
-            }
-        }
-        if (imageIds.length === legacyCount) {
-            record.imageIds = imageIds;
-            record.images = [];
-            changed = true;
-            recordsUpdated++;
-        } else if (imageIds.length > 0) {
-            // Roll back partial writes to avoid orphaned blobs in IndexedDB.
-            if (typeof deleteImagesFromStore === "function") {
-                try { await deleteImagesFromStore(imageIds); } catch (_) {}
-            }
-            imagesMigrated -= imageIds.length;
-            failedImages += legacyCount;
-        } else {
-            failedImages += legacyCount;
-        }
-    }
-
-    if (changed && await persistDTR(dailyRecords)) {
-        console.log("DTR: Migrated legacy images to IndexedDB.");
-    }
-
-    return { recordsUpdated, imagesMigrated, failedImages, changed };
-}
-
 function getStorageEligibleRecordEntries(action = "all") {
     const entries = (dailyRecords || []).map((record, index) => ({ record, index }));
-    if (action === "transfer") {
-        return entries.filter((e) => e.record && e.record.images && e.record.images.length);
-    }
     if (action === "optimize") {
         return entries.filter((e) =>
             e.record && ((e.record.imageIds && e.record.imageIds.length) || (e.record.images && e.record.images.length))
@@ -89,7 +37,8 @@ function refreshStorageActionSelectors() {
     single.innerHTML = "";
     const allOption = document.createElement("option");
     allOption.value = "__ALL__";
-    allOption.textContent = `All Eligible Records (${entries.length})`;
+    const allEligibleText =  "All Eligible Records";
+    allOption.textContent = `${allEligibleText} (${entries.length})`;
     single.appendChild(allOption);
 
     multi.innerHTML = "";
@@ -148,21 +97,35 @@ function getSelectedStorageTargetRecords(action = "all") {
         .map((entry) => entry.record);
 }
 
-async function transferLegacyPhotos(buttonEl) {
-    if (!dailyRecords || !dailyRecords.length) {
-        alert("No records found.");
+async function transferRecordsToIndexedDB(buttonEl) {
+    if (typeof saveRecordsToStore !== "function") {
+        alert("IndexedDB record store is unavailable in this browser.");
         return;
     }
 
-    const legacyRecords = getSelectedStorageTargetRecords("transfer");
-    const legacyCount = legacyRecords.reduce((sum, r) => sum + r.images.length, 0);
-
-    if (!legacyCount) {
-        alert("No eligible legacy photos found in the selected target(s).");
+    let localRecords = [];
+    try {
+        localRecords = JSON.parse(localStorage.getItem("dtr") || "[]");
+    } catch (_) {
+        localRecords = [];
+    }
+    if (!Array.isArray(localRecords) || !localRecords.length) {
+        alert("No localStorage records found to transfer.");
         return;
     }
 
-    if (!confirm(`Transfer ${legacyCount} localStorage image(s) to IndexedDB now?`)) return;
+    const sourceRecords = normalizeTransferRecords(localRecords);
+    if (!sourceRecords.length) {
+        alert("No valid localStorage records found to transfer.");
+        return;
+    }
+
+    const transferMode = await chooseTransferModeModal({
+        sourceLabel: "localStorage",
+        targetLabel: "IndexedDB",
+        recordCount: sourceRecords.length
+    });
+    if (!transferMode || transferMode.mode === "abort") return;
 
     const btn = buttonEl && buttonEl.tagName === "BUTTON" ? buttonEl : null;
     const originalText = btn ? btn.innerText : "";
@@ -172,22 +135,50 @@ async function transferLegacyPhotos(buttonEl) {
     }
 
     try {
-        const result = await migrateImagesToIndexedDB(legacyRecords);
-        if (result.imagesMigrated === 0) {
-            alert("No photos were transferred. Please check browser storage permissions and try again.");
-        } else if (result.failedImages > 0) {
-            alert(
-                `Transferred ${result.imagesMigrated} photo(s). ` +
-                `${result.failedImages} photo(s) could not be transferred and were kept as legacy data.`
-            );
-        } else {
-            alert(`Transfer complete: ${result.imagesMigrated} photo(s) moved to IndexedDB.`);
+        let existingIdbRecords = [];
+        try {
+            const current = await getRecordsFromStore();
+            existingIdbRecords = normalizeTransferRecords(current);
+        } catch (_) {
+            existingIdbRecords = [];
         }
-        if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
+
+        backupTransferSnapshot("idb", existingIdbRecords);
+        const nextRecords = sourceRecords;
+        const imageMigration = transferMode.includeImages
+            ? await migrateTransferRecordImagesToIdb(nextRecords)
+            : { records: normalizeTransferRecords(nextRecords), migratedImages: 0, failedImages: 0 };
+
+        dailyRecords = imageMigration.records;
+        if (transferMode.mode === "replace" && typeof deleteImagesFromStore === "function") {
+            const oldIds = collectTransferRecordImageIds(existingIdbRecords);
+            const nextIds = collectTransferRecordImageIds(dailyRecords);
+            const idsToDelete = oldIds.filter((id) => !nextIds.includes(id));
+            if (idsToDelete.length) {
+                try { await deleteImagesFromStore(idsToDelete); } catch (_) {}
+            }
+        }
+        if (typeof persistDTR === "function") {
+            const ok = await persistDTR(dailyRecords);
+            if (!ok) throw new Error("Failed to persist transferred records.");
+        } else {
+            await saveRecordsToStore(dailyRecords);
+        }
         loadReflectionViewer();
-        refreshStorageActionSelectors();
+        if (dailyRecords.length) showSummary(dailyRecords[dailyRecords.length - 1]);
+        if (typeof renderDailyGraph === "function") renderDailyGraph();
+        if (typeof renderWeeklyGraph === "function") renderWeeklyGraph();
+        if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
+        alert(
+            `Transfer complete: ${dailyRecords.length} record(s) in IndexedDB ` +
+            `(replace mode).` +
+            (transferMode.includeImages
+                ? `\nImages migrated to IndexedDB: ${imageMigration.migratedImages}` +
+                  (imageMigration.failedImages > 0 ? `\nImages kept as legacy fallback: ${imageMigration.failedImages}` : "")
+                : `\nImage transfer skipped (records only).`)
+        );
     } catch (err) {
-        alert("Legacy photo transfer failed: " + (err && err.message ? err.message : err));
+        alert("Transfer to IndexedDB failed: " + (err && err.message ? err.message : err));
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -196,7 +187,514 @@ async function transferLegacyPhotos(buttonEl) {
     }
 }
 
+async function transferRecordsToLocalStorage(buttonEl) {
+    if (typeof getRecordsFromStore !== "function") {
+        alert("IndexedDB record store is unavailable in this browser.");
+        return;
+    }
+
+    const btn = buttonEl && buttonEl.tagName === "BUTTON" ? buttonEl : null;
+    const originalText = btn ? btn.innerText : "";
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = "Transferring...";
+    }
+
+    try {
+        const idbRecords = await getRecordsFromStore();
+        const sourceRecords = normalizeTransferRecords(idbRecords);
+        if (!sourceRecords.length) {
+            alert("No IndexedDB records found to transfer.");
+            return;
+        }
+        const transferMode = await chooseTransferModeModal({
+            sourceLabel: "IndexedDB",
+            targetLabel: "localStorage",
+            recordCount: sourceRecords.length
+        });
+        if (!transferMode || transferMode.mode === "abort") return;
+
+        let existingLocalRecords = [];
+        try {
+            existingLocalRecords = normalizeTransferRecords(JSON.parse(localStorage.getItem("dtr") || "[]"));
+        } catch (_) {
+            existingLocalRecords = [];
+        }
+        backupTransferSnapshot("local", existingLocalRecords);
+        const nextRecords = sourceRecords;
+        const imageExpansion = transferMode.includeImages
+            ? await expandTransferRecordImagesFromIdb(nextRecords)
+            : { records: normalizeTransferRecords(nextRecords), embeddedImages: 0, missingImages: 0 };
+
+        if (!safeSetDTR(imageExpansion.records)) {
+            throw new Error("Failed to write records to localStorage.");
+        }
+        dailyRecords = imageExpansion.records;
+        loadReflectionViewer();
+        if (dailyRecords.length) showSummary(dailyRecords[dailyRecords.length - 1]);
+        if (typeof renderDailyGraph === "function") renderDailyGraph();
+        if (typeof renderWeeklyGraph === "function") renderWeeklyGraph();
+        if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
+        alert(
+            `Transfer complete: ${dailyRecords.length} record(s) in localStorage ` +
+            `(replace mode).` +
+            (transferMode.includeImages
+                ? `\nImages embedded to localStorage records: ${imageExpansion.embeddedImages}` +
+                  (imageExpansion.missingImages > 0 ? `\nImage IDs missing in IndexedDB: ${imageExpansion.missingImages}` : "")
+                : `\nImage transfer skipped (records only).`)
+        );
+    } catch (err) {
+        alert("Transfer to localStorage failed: " + (err && err.message ? err.message : err));
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    }
+}
+
+function normalizeTransferRecord(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const dateKey = toGmt8DateKey(raw.date);
+    const hours = parseFloat(raw.hours);
+    if (!dateKey || !Number.isFinite(hours)) return null;
+
+    return {
+        ...raw,
+        date: dateKey,
+        hours,
+        delta: Number.isFinite(parseFloat(raw.delta)) ? parseFloat(raw.delta) : (hours - DAILY_TARGET_HOURS),
+        reflection: typeof raw.reflection === "string" ? raw.reflection : "",
+        accomplishments: Array.isArray(raw.accomplishments)
+            ? raw.accomplishments.map((a) => String(a || "").trim()).filter(Boolean)
+            : [],
+        tools: Array.isArray(raw.tools)
+            ? raw.tools.map((t) => String(t || "").trim()).filter(Boolean)
+            : [],
+        images: Array.isArray(raw.images) ? raw.images.filter((i) => typeof i === "string") : [],
+        imageIds: Array.isArray(raw.imageIds) ? raw.imageIds.filter((id) => typeof id === "string" && id) : [],
+        personalHours: parseFloat(raw.personalHours) || 0,
+        sleepHours: parseFloat(raw.sleepHours) || 0,
+        recoveryHours: parseFloat(raw.recoveryHours) || 0,
+        commuteTotal: parseFloat(raw.commuteTotal) || 0,
+        commuteProductive: parseFloat(raw.commuteProductive) || 0,
+        identityScore: parseInt(raw.identityScore, 10) || 0
+    };
+}
+
+function normalizeTransferRecords(records) {
+    if (!Array.isArray(records)) return [];
+    return records
+        .map(normalizeTransferRecord)
+        .filter(Boolean)
+        .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+}
+
+function backupTransferSnapshot(sourceLabel, records) {
+    try {
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const key = `dtr_backup_${sourceLabel}_${stamp}`;
+        localStorage.setItem(key, JSON.stringify(Array.isArray(records) ? records : []));
+    } catch (e) {
+        console.warn("Unable to create transfer backup snapshot:", e);
+    }
+}
+
+async function clearDuplicateIndexedDbRecords(buttonEl) {
+    if (typeof getRecordsFromStore !== "function" || typeof saveRecordsToStore !== "function") {
+        alert("IndexedDB record store is unavailable in this browser.");
+        return;
+    }
+
+    const btn = buttonEl && buttonEl.tagName === "BUTTON" ? buttonEl : null;
+    const originalText = btn ? btn.innerText : "";
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = "Cleaning...";
+    }
+
+    try {
+        const idbRecordsRaw = await getRecordsFromStore();
+        const idbRecords = Array.isArray(idbRecordsRaw) ? idbRecordsRaw : [];
+        if (!idbRecords.length) {
+            alert("No IndexedDB records found.");
+            return;
+        }
+
+        const dedupe = dedupeRecordsByDateKeepLatest(idbRecords);
+        const imageDedupe = await dedupeRecordImageIdsByContent(dedupe.records);
+        const totalRecordDuplicates = dedupe.removedCount;
+        const totalImageDuplicates = imageDedupe.duplicateImageIds.length;
+
+        if (totalRecordDuplicates <= 0 && totalImageDuplicates <= 0) {
+            alert("No duplicate IndexedDB records or pictures found.");
+            return;
+        }
+
+        if (!confirm(
+            `Found duplicates in IndexedDB:\n` +
+            `- Records (by date): ${totalRecordDuplicates}\n` +
+            `- Pictures (by content): ${totalImageDuplicates}\n\n` +
+            `Remove duplicates now?`
+        )) {
+            return;
+        }
+
+        backupTransferSnapshot("idb_dedupe", idbRecords);
+
+        dailyRecords = imageDedupe.records;
+        if (typeof persistDTR === "function") {
+            const ok = await persistDTR(dailyRecords);
+            if (!ok) throw new Error("Failed to persist deduplicated records.");
+        } else {
+            await saveRecordsToStore(dailyRecords);
+            safeSetDTR(dailyRecords);
+        }
+
+        if (typeof deleteImagesFromStore === "function") {
+            const stillReferenced = new Set(collectTransferRecordImageIds(dailyRecords));
+            const candidates = [...dedupe.orphanImageIds, ...imageDedupe.duplicateImageIds];
+            const idsToDelete = [...new Set(candidates)].filter((id) => !stillReferenced.has(id));
+            if (idsToDelete.length) {
+                try { await deleteImagesFromStore(idsToDelete); } catch (_) {}
+            }
+        }
+
+        loadReflectionViewer();
+        if (dailyRecords.length) showSummary(dailyRecords[dailyRecords.length - 1]);
+        if (typeof renderDailyGraph === "function") renderDailyGraph();
+        if (typeof renderWeeklyGraph === "function") renderWeeklyGraph();
+        if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
+        if (typeof refreshStorageActionSelectors === "function") refreshStorageActionSelectors();
+
+        alert(
+            `IndexedDB dedupe complete.\n` +
+            `Removed duplicate records: ${totalRecordDuplicates}\n` +
+            `Removed duplicate pictures: ${totalImageDuplicates}\n` +
+            `Records kept: ${dailyRecords.length}`
+        );
+    } catch (err) {
+        alert("Failed to clear IndexedDB duplicates: " + (err && err.message ? err.message : err));
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    }
+}
+
+async function dedupeRecordImageIdsByContent(records) {
+    const normalized = normalizeTransferRecords(records);
+    const rewritten = [];
+    const seenBySignature = new Map();
+    const duplicateImageIds = [];
+
+    for (const record of normalized) {
+        const imageIds = Array.isArray(record.imageIds) ? record.imageIds : [];
+        const nextIds = [];
+
+        for (const id of imageIds) {
+            if (!id || typeof id !== "string") continue;
+            const existingInRecord = nextIds.includes(id);
+            if (existingInRecord) {
+                duplicateImageIds.push(id);
+                continue;
+            }
+
+            let signature = "";
+            if (typeof getImageFromStore === "function") {
+                try {
+                    const dataUrl = await getImageFromStore(id);
+                    signature = await buildImageSignature(dataUrl);
+                } catch (_) {
+                    signature = "";
+                }
+            }
+
+            if (!signature) {
+                nextIds.push(id);
+                continue;
+            }
+
+            if (!seenBySignature.has(signature)) {
+                seenBySignature.set(signature, id);
+                nextIds.push(id);
+                continue;
+            }
+
+            const canonicalId = seenBySignature.get(signature);
+            if (!nextIds.includes(canonicalId)) {
+                nextIds.push(canonicalId);
+            }
+            if (id !== canonicalId) {
+                duplicateImageIds.push(id);
+            }
+        }
+
+        rewritten.push({
+            ...record,
+            imageIds: [...new Set(nextIds)]
+        });
+    }
+
+    return {
+        records: rewritten,
+        duplicateImageIds: [...new Set(duplicateImageIds)]
+    };
+}
+
+async function buildImageSignature(dataUrl) {
+    if (typeof dataUrl !== "string" || !dataUrl) return "";
+    const bytes = dataUrlToBytes(dataUrl);
+    if (bytes && bytes.length && typeof crypto !== "undefined" && crypto.subtle && typeof crypto.subtle.digest === "function") {
+        try {
+            const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+            const hashHex = bytesToHex(new Uint8Array(hashBuffer));
+            return `sha256:${hashHex}`;
+        } catch (_) {
+            // Fall back to lightweight signature below.
+        }
+    }
+    return `fp:${dataUrl.length}:${dataUrl.slice(0, 128)}:${dataUrl.slice(-128)}`;
+}
+
+function dataUrlToBytes(dataUrl) {
+    if (typeof dataUrl !== "string") return null;
+    const commaIndex = dataUrl.indexOf(",");
+    if (commaIndex === -1) return null;
+    const header = dataUrl.slice(0, commaIndex);
+    const payload = dataUrl.slice(commaIndex + 1);
+    if (!payload) return null;
+
+    const isBase64 = /;base64/i.test(header);
+    try {
+        if (isBase64) {
+            const binary = atob(payload);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        const decoded = decodeURIComponent(payload);
+        const bytes = new Uint8Array(decoded.length);
+        for (let i = 0; i < decoded.length; i++) {
+            bytes[i] = decoded.charCodeAt(i) & 0xff;
+        }
+        return bytes;
+    } catch (_) {
+        return null;
+    }
+}
+
+function bytesToHex(bytes) {
+    if (!bytes || !bytes.length) return "";
+    let out = "";
+    for (let i = 0; i < bytes.length; i++) {
+        out += bytes[i].toString(16).padStart(2, "0");
+    }
+    return out;
+}
+
+function dedupeRecordsByDateKeepLatest(records) {
+    const source = Array.isArray(records) ? records : [];
+    const latestByDate = new Map();
+
+    source.forEach((record, idx) => {
+        const dateKey = toGmt8DateKey(record && record.date);
+        if (!dateKey) return;
+        latestByDate.set(dateKey, { record: { ...record, date: dateKey }, idx });
+    });
+
+    const kept = Array.from(latestByDate.values())
+        .sort((a, b) => (a.record.date || "").localeCompare(b.record.date || ""))
+        .map((x) => x.record);
+
+    const keptDateKeys = new Set(kept.map((r) => r.date));
+    const removedRecords = source.filter((r, idx) => {
+        const dateKey = toGmt8DateKey(r && r.date);
+        if (!dateKey) return false;
+        const latestMeta = latestByDate.get(dateKey);
+        return !!latestMeta && latestMeta.idx !== idx;
+    });
+
+    const keptImageIds = new Set(collectTransferRecordImageIds(kept));
+    const orphanImageIds = collectTransferRecordImageIds(removedRecords).filter((id) => !keptImageIds.has(id));
+    const normalizedKept = normalizeTransferRecords(kept);
+
+    return {
+        records: normalizedKept,
+        removedCount: Math.max(0, source.length - normalizedKept.length),
+        orphanImageIds,
+        keptDateKeys
+    };
+}
+
+async function migrateTransferRecordImagesToIdb(records) {
+    const normalized = normalizeTransferRecords(records);
+    const result = [];
+    let migratedImages = 0;
+    let failedImages = 0;
+
+    for (const record of normalized) {
+        const next = {
+            ...record,
+            imageIds: Array.isArray(record.imageIds) ? [...record.imageIds] : [],
+            images: Array.isArray(record.images) ? [...record.images] : []
+        };
+        if (!next.images.length || typeof saveImageToStore !== "function") {
+            next.imageIds = [...new Set(next.imageIds)];
+            result.push(next);
+            continue;
+        }
+
+        // If legacy/base64 images are present, treat them as the source of truth.
+        // This avoids ID duplication when round-tripping localStorage <-> IndexedDB.
+        next.imageIds = [];
+        const remainingLegacy = [];
+        for (const dataUrl of next.images) {
+            if (!dataUrl || typeof dataUrl !== "string") continue;
+            try {
+                const id = await saveImageToStore(dataUrl);
+                if (id) {
+                    next.imageIds.push(id);
+                    migratedImages++;
+                } else {
+                    remainingLegacy.push(dataUrl);
+                    failedImages++;
+                }
+            } catch (_) {
+                remainingLegacy.push(dataUrl);
+                failedImages++;
+            }
+        }
+        next.imageIds = [...new Set(next.imageIds)];
+        next.images = remainingLegacy;
+        result.push(next);
+    }
+
+    return { records: result, migratedImages, failedImages };
+}
+
+function collectTransferRecordImageIds(records) {
+    if (!Array.isArray(records)) return [];
+    const ids = new Set();
+    records.forEach((r) => {
+        const imageIds = r && Array.isArray(r.imageIds) ? r.imageIds : [];
+        imageIds.forEach((id) => {
+            if (typeof id === "string" && id) ids.add(id);
+        });
+    });
+    return Array.from(ids);
+}
+
+async function expandTransferRecordImagesFromIdb(records) {
+    const normalized = normalizeTransferRecords(records);
+    const result = [];
+    let embeddedImages = 0;
+    let missingImages = 0;
+
+    for (const record of normalized) {
+        const next = {
+            ...record,
+            imageIds: Array.isArray(record.imageIds) ? [...record.imageIds] : [],
+            images: Array.isArray(record.images) ? [...record.images] : []
+        };
+        if (!next.imageIds.length || typeof getImageFromStore !== "function") {
+            result.push(next);
+            continue;
+        }
+
+        const hydratedImages = [];
+        for (const id of next.imageIds) {
+            if (!id || typeof id !== "string") continue;
+            try {
+                const dataUrl = await getImageFromStore(id);
+                if (dataUrl && typeof dataUrl === "string") {
+                    hydratedImages.push(dataUrl);
+                    embeddedImages++;
+                } else {
+                    missingImages++;
+                }
+            } catch (_) {
+                missingImages++;
+            }
+        }
+
+        if (hydratedImages.length) {
+            next.images = hydratedImages;
+        }
+        result.push(next);
+    }
+
+    return { records: result, embeddedImages, missingImages };
+}
+
+function chooseTransferModeModal({ sourceLabel, targetLabel, recordCount }) {
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = (mode) => {
+            if (settled) return;
+            settled = true;
+            const includeImages = !!panel.querySelector("#transferIncludeImages")?.checked;
+            modal.remove();
+            resolve({ mode: mode || "abort", includeImages });
+        };
+
+        const modal = document.createElement("div");
+        modal.style.cssText = [
+            "position:fixed",
+            "inset:0",
+            "background:rgba(0,0,0,0.72)",
+            "display:flex",
+            "align-items:center",
+            "justify-content:center",
+            "z-index:10050",
+            "padding:16px"
+        ].join(";");
+
+        const panel = document.createElement("div");
+        panel.style.cssText = [
+            "width:min(560px,100%)",
+            "background:var(--panel)",
+            "border:1px solid var(--border)",
+            "border-radius:10px",
+            "padding:16px",
+            "box-shadow:0 10px 28px rgba(0,0,0,0.4)",
+            "color:var(--text)"
+        ].join(";");
+
+        const transferTitle = "Transfer Records";
+        panel.innerHTML = `
+            <h3 style="margin:0 0 10px 0; color:var(--accent);">${transferTitle}</h3>
+            <p style="margin:0 0 8px 0;">Move <strong>${recordCount}</strong> valid record(s) from <strong>${sourceLabel}</strong> to <strong>${targetLabel}</strong>.</p>
+            <p style="margin:0 0 12px 0; opacity:0.85; font-size:0.92em;">
+              Replace overwrites the entire target dataset.
+            </p>
+            <label style="display:flex; align-items:center; gap:8px; margin:0 0 12px 0; font-size:0.92em;">
+                <input id="transferIncludeImages" type="checkbox" checked>
+                Include images in transfer
+            </label>
+            <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+                <button id="transferAbortBtn" type="button" style="background:transparent; color:var(--text); border:1px solid var(--border);">Abort</button>
+                <button id="transferReplaceBtn" type="button" style="background:var(--accent); color:#fff;">Replace Target</button>
+            </div>
+        `;
+
+        modal.appendChild(panel);
+        document.body.appendChild(modal);
+
+        panel.querySelector("#transferAbortBtn").addEventListener("click", () => finish("abort"));
+        panel.querySelector("#transferReplaceBtn").addEventListener("click", () => finish("replace"));
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) finish("abort");
+        });
+    });
+}
+ 
 const STORAGE_LIMIT_BYTES = 5 * 1024 * 1024; // ~5 MB typical localStorage limit
+const IDB_QUOTA_DISPLAY_CAP_BYTES = 10 * 1024 * 1024 * 1024; // Normalize display across browsers/devices
 
 function formatBytesAdaptive(bytes) {
     if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -212,9 +710,15 @@ function formatBytesAdaptive(bytes) {
 }
 
 function getStorageInfo() {
-    const usedBytes = typeof dailyRecords !== "undefined"
-        ? new Blob([JSON.stringify(dailyRecords)]).size
-        : new Blob([localStorage.getItem("dtr") || "[]"]).size;
+    let dtrString = localStorage.getItem("dtr");
+    if (!dtrString && typeof dailyRecords !== "undefined") {
+        try { dtrString = JSON.stringify(dailyRecords); } catch(e) {}
+    }
+    if (!dtrString) dtrString = "[]";
+    
+    // Browsers natively measure localStorage limits based on UTF-16 string length (2 bytes per character)
+    const usedBytes = dtrString.length * 2;
+    
     const usedMB = (usedBytes / 1024 / 1024).toFixed(2);
     const limitMB = (STORAGE_LIMIT_BYTES / 1024 / 1024).toFixed(2);
     const percent = Math.min(100, (usedBytes / STORAGE_LIMIT_BYTES) * 100);
@@ -231,12 +735,14 @@ function updateStorageVisualizer() {
     const el = document.getElementById("storageVisualizer");
     if (!el) return;
 
-    const { usedBytes, usedMB, limitMB, percent } = getStorageInfo();
+    try {
+        const { usedBytes, usedMB, limitMB, percent } = getStorageInfo();
 
-    const usedText = document.getElementById("storageUsedText");
-    const limitText = document.getElementById("storageLimitText");
-    const bar = document.getElementById("storageBar");
-    const status = document.getElementById("storageStatus");
+        const usedText = document.getElementById("storageUsedText");
+        const limitText = document.getElementById("storageLimitText");
+        const bar = document.getElementById("storageBar");
+        const status = document.getElementById("storageStatus");
+
     const idbUsedText = document.getElementById("storageIdbUsedText");
     const idbQuotaText = document.getElementById("storageIdbQuotaText");
     const idbBar = document.getElementById("storageIdbBar");
@@ -259,14 +765,17 @@ function updateStorageVisualizer() {
     }
 
     if (status) {
-        if (percent >= 80) {
-            status.textContent = "âš ï¸ Running low on storage. Consider optimizing or removing images.";
-            status.style.color = "var(--color-warning)";
-        } else if (percent >= 95) {
-            status.textContent = "âš ï¸ Storage almost full! Run Optimize DB or remove images.";
+        if (percent >= 95) {
+            const statusText = "Storage almost full! Run Optimize DB or remove images.";
+            status.textContent = statusText;
             status.style.color = "var(--accent)";
+        } else if (percent >= 80) {
+            const statusText = "Running low on storage. Consider optimizing or removing images.";
+            status.textContent = statusText;
+            status.style.color = "var(--color-warning)";
         } else {
-            status.textContent = percent < 50 ? "Storage healthy" : "Storage usage moderate";
+            const statusText = percent < 50 ? "Storage healthy" : "Storage usage moderate";
+            status.textContent = statusText;
             status.style.color = "var(--color-good)";
         }
     }
@@ -274,51 +783,73 @@ function updateStorageVisualizer() {
     if (typeof getImageStoreUsageBytes === "function" && typeof getImageStoreEstimate === "function") {
         const idbSection = document.getElementById("storageIdbSection");
         const idbStatus = document.getElementById("storageIdbStatus");
-        Promise.all([getImageStoreUsageBytes(), getImageStoreEstimate()]).then(([idbBytes, estimate]) => {
+        
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Storage check timed out")), 2000));
+        
+        Promise.race([
+            Promise.all([getImageStoreUsageBytes(), getImageStoreEstimate()]),
+            timeoutPromise
+        ]).then(([idbBytes, estimate]) => {
+
             const idbMB = (idbBytes / 1024 / 1024).toFixed(2);
-            const quota = estimate.quota || 0;
-            const quotaAdaptive = quota > 0 ? formatBytesAdaptive(quota) : "--";
+            const rawQuota = Number(estimate && estimate.quota) || 0;
+            const effectiveQuota = rawQuota > 0
+                ? Math.min(rawQuota, IDB_QUOTA_DISPLAY_CAP_BYTES)
+                : IDB_QUOTA_DISPLAY_CAP_BYTES;
+            const quotaAdaptive = formatBytesAdaptive(effectiveQuota);
             if (idbUsedText) idbUsedText.textContent = `${idbMB} MB`;
-            if (idbQuotaText) idbQuotaText.textContent = quota > 0 ? quotaAdaptive : "--";
-            const idbPercent = quota > 0 ? Math.min(100, (idbBytes / quota) * 100) : 0;
-            if (idbBar && quota > 0) {
+            if (idbQuotaText) idbQuotaText.textContent = quotaAdaptive;
+            const idbPercent = Math.min(100, (idbBytes / effectiveQuota) * 100);
+            if (idbBar) {
                 idbBar.style.width = `${idbPercent}%`;
                 idbBar.setAttribute("aria-valuenow", Math.round(idbPercent));
             }
-            const idbInfo = quota > 0
-                ? `${formatBytesAdaptive(idbBytes)} used of ${quotaAdaptive} (${Math.round(idbPercent)}%)`
-                : `${formatBytesAdaptive(idbBytes)} used (quota unavailable)`;
+            const idbInfo = `${formatBytesAdaptive(idbBytes)} used of ${quotaAdaptive} (${Math.round(idbPercent)}%)`;
             if (idbUsedText) idbUsedText.title = `IndexedDB usage: ${idbInfo}`;
-            if (idbQuotaText) idbQuotaText.title = quota > 0
-                ? `IndexedDB capacity: ${quotaAdaptive}`
-                : "IndexedDB capacity unavailable";
+            if (idbQuotaText) {
+                const rawQuotaLabel = rawQuota > 0 ? formatBytesAdaptive(rawQuota) : "unavailable";
+                idbQuotaText.title = `IndexedDB capacity (normalized): ${quotaAdaptive}; raw browser estimate: ${rawQuotaLabel}`;
+            }
             if (idbBar) idbBar.title = `IndexedDB: ${idbInfo}`;
             if (idbBarTip) idbBarTip.textContent = idbInfo;
             if (idbSection) {
                 idbSection.setAttribute("data-percent", idbPercent >= 95 ? "critical" : idbPercent >= 80 ? "high" : "normal");
             }
             if (idbStatus) {
-                if (idbPercent >= 80) {
-                    idbStatus.textContent = "âš ï¸ Running low on image storage. Consider optimizing or removing images.";
-                    idbStatus.style.color = "var(--color-warning)";
-                } else if (idbPercent >= 95) {
-                    idbStatus.textContent = "âš ï¸ Image storage almost full! Run Optimize DB or remove images.";
+                if (idbPercent >= 95) {
+                    const idbStatusText = "Image storage almost full! Run Optimize DB or remove images.";
+                    idbStatus.textContent = idbStatusText;
                     idbStatus.style.color = "var(--accent)";
+                } else if (idbPercent >= 80) {
+                    const idbStatusText = "Running low on image storage. Consider optimizing or removing images.";
+                    idbStatus.textContent = idbStatusText;
+                    idbStatus.style.color = "var(--color-warning)";
                 } else {
-                    idbStatus.textContent = idbPercent < 50 ? "Image storage healthy" : "Image storage usage moderate";
+                    const idbStatusText = idbPercent < 50 ? "Image storage healthy" : "Image storage usage moderate";
+                    idbStatus.textContent = idbStatusText;
                     idbStatus.style.color = "var(--color-good)";
                 }
             }
         }).catch(() => {
-            if (idbUsedText) idbUsedText.textContent = "â€”";
-            if (idbQuotaText) idbQuotaText.textContent = "â€”";
-            if (idbStatus) idbStatus.textContent = "Unable to read image storage.";
-            if (idbBarTip) idbBarTip.textContent = "IndexedDB usage unavailable";
+            if (idbUsedText) idbUsedText.textContent = "—";
+            if (idbQuotaText) idbQuotaText.textContent = "—";
+            const idbStatusText = "Unable to read image storage.";
+            if (idbStatus) idbStatus.textContent = idbStatusText;
+            const idbTipText = "IndexedDB usage unavailable";
+            if (idbBarTip) idbBarTip.textContent = idbTipText;
         });
     }
 
     if (typeof refreshStorageActionSelectors === "function") {
         refreshStorageActionSelectors();
+    }
+    } catch (e) {
+        console.error("updateStorageVisualizer error:", e);
+        const status = document.getElementById("storageStatus");
+        if (status) {
+            status.textContent = "Error: " + e.message;
+            status.style.color = "var(--accent)";
+        }
     }
 }
 
@@ -335,7 +866,7 @@ async function optimizeStorage() {
 
     const btn = document.activeElement;
     const originalText = btn ? btn.innerText : "";
-    if (btn && btn.tagName === "BUTTON") btn.innerText = "Optimizing... â³";
+    if (btn && btn.tagName === "BUTTON") btn.innerText = "Optimizing... ⏳";
     const liveStatusEl = document.getElementById("storageStatus");
     const uiTickMs = 250;
     let lastUiTick = 0;
@@ -346,7 +877,8 @@ async function optimizeStorage() {
         if (!force && (now - lastUiTick) < uiTickMs) return;
         lastUiTick = now;
         if (liveStatusEl) {
-            liveStatusEl.textContent = `Optimizing images... ${recordsDone}/${originalCount} record(s), ${imagesProcessed} image(s) compressed`;
+            const optText = "Optimizing images...";
+            liveStatusEl.textContent = `${optText} ${recordsDone}/${originalCount} record(s), ${imagesProcessed} image(s) compressed`;
         }
         if (typeof loadReflectionViewer === "function") {
             await Promise.resolve(loadReflectionViewer());
@@ -465,7 +997,7 @@ async function restoreOptimizedImages(buttonEl) {
 
     const btn = buttonEl && buttonEl.tagName === "BUTTON" ? buttonEl : null;
     const originalText = btn ? btn.innerText : "";
-    if (btn) btn.innerText = "Restoring... â³";
+    if (btn) btn.innerText = "Restoring... ⏳";
     const liveStatusEl = document.getElementById("storageStatus");
     const totalIds = imageIds.length;
     const uiTickMs = 250;
@@ -483,7 +1015,8 @@ async function restoreOptimizedImages(buttonEl) {
         if (!force && (now - lastUiTick) < uiTickMs) return;
         lastUiTick = now;
         if (liveStatusEl) {
-            liveStatusEl.textContent = `Restoring originals... ${processedCount}/${totalIds} image(s), ${restoredCount} restored`;
+            const restoreText = "Restoring originals...";
+            liveStatusEl.textContent = `${restoreText} ${processedCount}/${totalIds} image(s), ${restoredCount} restored`;
         }
         if (typeof loadReflectionViewer === "function") {
             await Promise.resolve(loadReflectionViewer());

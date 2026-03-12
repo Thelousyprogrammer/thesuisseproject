@@ -12,7 +12,8 @@ function renderDailyGraph(records = dailyRecords) {
     if (labelsContainer) labelsContainer.innerHTML = "";
 
     if (!records || records.length === 0) {
-        container.innerHTML = "<p class='empty-msg'>No records to visualize.</p>";
+        const emptyText = "No records to visualize.";
+        container.innerHTML = `<p class='empty-msg'>${emptyText}</p>`;
         return;
     }
 
@@ -21,7 +22,8 @@ function renderDailyGraph(records = dailyRecords) {
         .map(r => parseDateKeyGmt8(toGmt8DateKey(r.date)))
         .filter(Boolean);
     if (!dates.length) {
-        container.innerHTML = "<p class='empty-msg'>No valid dated records to visualize.</p>";
+        const emptyText = "No valid dated records to visualize.";
+        container.innerHTML = `<p class='empty-msg'>${emptyText}</p>`;
         return;
     }
     const today = nowGmt8StartOfDay();

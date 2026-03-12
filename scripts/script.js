@@ -4,6 +4,7 @@
  */
 
 window.addEventListener("DOMContentLoaded", async () => {
+
     const savedOjt = typeof hydrateOjtSettingsFromStorage === "function"
         ? hydrateOjtSettingsFromStorage()
         : null;
@@ -20,6 +21,9 @@ window.addEventListener("DOMContentLoaded", async () => {
         ? window.ThemeSync.getLocalTheme()
         : (localStorage.getItem("user-theme") || "f1");
     setTheme(localTheme, { broadcast: false });
+    if (typeof syncF1LightToggleLabel === "function") {
+        syncF1LightToggleLabel("f1LightToggleBtn");
+    }
 
     // 3. UI Initialization
     const startInput = document.getElementById("ojtStartDate");
@@ -79,6 +83,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     // 5. Storage Visualizer
     if (typeof updateStorageVisualizer === 'function') {
         updateStorageVisualizer();
+        if (!window.__dtrStorageVisualizerTimer) {
+            window.__dtrStorageVisualizerTimer = setInterval(() => {
+                if (typeof updateStorageVisualizer === "function") {
+                    updateStorageVisualizer();
+                }
+            }, 3000);
+        }
     }
 
     // 6. Live Sync: Real-time Graph Updates
@@ -113,6 +124,22 @@ window.addEventListener("DOMContentLoaded", async () => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', () => syncGraphsRealTime('editDate', 'editHours'));
     });
+});
+
+document.addEventListener("dtr:languageChanged", () => {
+    if (typeof updateReflectionWeekOptions === "function") updateReflectionWeekOptions();
+    if (typeof updateExportWeekOptions === "function") updateExportWeekOptions();
+    if (typeof loadReflectionViewer === "function") loadReflectionViewer();
+    if (typeof updateWeeklyCounter === "function") {
+        const dateInput = document.getElementById("date");
+        if (dateInput && dateInput.value) updateWeeklyCounter(dateInput.value);
+    }
+});
+
+document.addEventListener("theme:changed", () => {
+    if (typeof syncF1LightToggleLabel === "function") {
+        syncF1LightToggleLabel("f1LightToggleBtn");
+    }
 });
 
 // --- GLOBAL LISTENERS ---

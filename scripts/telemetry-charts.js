@@ -167,9 +167,9 @@ function renderTrajectoryChart(logs, customPace = null) {
                     spanGaps: true
                 },
                 { 
-                    label: `Ideal Target (Standard ${DAILY_TARGET_HOURS}h Daily)`, 
+                    label: `Ideal Target (Standard ${DAILY_TARGET_HOURS}h Daily)`,
                     data: idealCumulative, 
-                    borderColor: lineText + '',
+                    borderColor: lineText,
                     borderWidth: 2,
                     borderDash: [5, 5], 
                     pointRadius: 0 
@@ -193,7 +193,7 @@ function renderTrajectoryChart(logs, customPace = null) {
                             if (actual === 0 && ideal === 0) return null;
                             return diff > 0 
                                 ? `Deficit: ${diff.toFixed(1)}h behind` 
-                                : (diff < 0 ? `Surplus: ${Math.abs(diff).toFixed(1)}h ahead` : 'On Track');
+                                : (diff < 0 ? `Surplus: ${Math.abs(diff).toFixed(1)}h` : `On Track`);
                         }
                     }
                 }
@@ -214,18 +214,55 @@ function renderEnergyZoneChart(logs) {
     const canvas = document.getElementById('energyZoneChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    const detailsEl = document.getElementById('energyZoneDateDetails');
 
     const zoneOrder = ["Recovery", "Survival", "Solid", "Overdrive", "Elite"];
     const zones = { Elite: 0, Overdrive: 0, Solid: 0, Survival: 0, Recovery: 0 };
+    const zoneDates = { Elite: [], Overdrive: [], Solid: [], Survival: [], Recovery: [] };
+
+    // Build a set of all logged date keys for gap detection
+    const loggedDateKeys = new Set();
+    logs.forEach(r => {
+        const dateKey = toGmt8DateKey(r.date) || r.date;
+        if (dateKey) loggedDateKeys.add(dateKey);
+    });
+
+    // Count missing dates between OJT start and last log as Recovery
+    if (loggedDateKeys.size > 0) {
+        const ojtStartKey = toGmt8DateKey(OJT_START || getCurrentOjtStartDate());
+        const sortedKeys = [...loggedDateKeys].sort();
+        const lastKey = sortedKeys[sortedKeys.length - 1];
+        const startDate = parseDateKeyGmt8(ojtStartKey);
+        const endDate = parseDateKeyGmt8(lastKey);
+        if (startDate && endDate) {
+            for (let d = new Date(startDate.getTime()); d <= endDate; d = addDaysGmt8(d, 1)) {
+                const dk = toGmt8DateKey(d);
+                if (dk && !loggedDateKeys.has(dk) && isWorkdayGmt8(d)) {
+                    zones["Recovery"]++;
+                    zoneDates["Recovery"].push(dk + " ⟵ gap");
+                }
+            }
+        }
+    }
 
     logs.forEach(r => {
         const total = r.hours + (r.personalHours || 0);
-        if (r.hours >= 8 && (r.personalHours || 0) >= 1) zones["Elite"]++;
-        else if (total > 9) zones["Overdrive"]++;
-        else if (r.hours >= 8) zones["Solid"]++;
-        else if (r.hours >= 6) zones["Survival"]++;
-        else zones["Recovery"]++;
+        const dateKey = toGmt8DateKey(r.date) || r.date;
+        let zone = "Recovery";
+        if (r.hours >= 8 && (r.personalHours || 0) >= 1) zone = "Elite";
+        else if (total > 9) zone = "Overdrive";
+        else if (r.hours >= 8) zone = "Solid";
+        else if (r.hours >= 6) zone = "Survival";
+        zones[zone]++;
+        if (dateKey) zoneDates[zone].push(dateKey);
     });
+
+    const noDatesLabel = "No dates in current window.";
+    const zoneClickText = "Click a zone bar to view specific dates.";
+
+    if (detailsEl) {
+        detailsEl.innerHTML = zoneClickText;
+    }
 
     charts.energy = new Chart(ctx, {
         type: 'bar',
@@ -242,6 +279,24 @@ function renderEnergyZoneChart(logs) {
             indexAxis: 'y', 
             responsive: true, 
             maintainAspectRatio: false,
+            onClick: (event, elements) => {
+                if (!detailsEl) return;
+                if (!elements || !elements.length) return;
+                const idx = elements[0].index;
+                const zone = zoneOrder[idx];
+                const dates = zoneDates[zone] || [];
+                if (!dates.length) {
+                    detailsEl.innerHTML = `<strong>${zone}:</strong> ${noDatesLabel}`;
+                    return;
+                }
+                const items = dates.map((d) => `<li>${d}</li>`).join("");
+                detailsEl.innerHTML = `
+                    <strong>${zone} (${dates.length})</strong>
+                    <ul style="margin:6px 0 0 16px; padding:0;">
+                        ${items}
+                    </ul>
+                `;
+            },
             plugins: { legend: { display: false } },
             scales: { x: { beginAtZero: true, grid: { color: COLORS.grid } } }
         }
@@ -264,13 +319,16 @@ function renderIdentityChart(logs) {
     });
 
     const sortedWeeks = Object.keys(weeklyIdentity).map(Number).sort((a, b) => a - b);
+    const noDataLabel = "No Data";
+    const alignScoreLabel = "Alignment Score";
+
     if (!sortedWeeks.length) {
         charts.identity = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['No Data'],
+                labels: [noDataLabel],
                 datasets: [{
-                    label: 'Alignment Score',
+                    label: alignScoreLabel,
                     data: [0],
                     backgroundColor: withAlpha(COLORS.grid, 0.35)
                 }]
@@ -297,6 +355,10 @@ function renderIdentityChart(logs) {
         text: boostColor(COLORS.text, 0.06)
     };
 
+    const weeklyAvgLabel = "Weekly Avg";
+    const targetLabel = "Target (4.0)";
+    const entryCountLabel = "Entry Count";
+
     charts.identity = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -304,7 +366,7 @@ function renderIdentityChart(logs) {
             datasets: [
                 {
                     type: 'bar',
-                    label: 'Weekly Avg',
+                    label: weeklyAvgLabel,
                     data: avgScores,
                     backgroundColor: avgScores.map((score) => {
                         if (score >= 4) return withAlpha(idTheme.excellent, 0.67);
@@ -325,7 +387,7 @@ function renderIdentityChart(logs) {
                 },
                 {
                     type: 'line',
-                    label: 'Target (4.0)',
+                    label: targetLabel,
                     data: targetLine,
                     borderColor: withAlpha(idTheme.text, 0.53),
                     borderDash: [5, 3],
@@ -336,7 +398,7 @@ function renderIdentityChart(logs) {
                 },
                 {
                     type: 'line',
-                    label: 'Entry Count',
+                    label: entryCountLabel,
                     data: counts,
                     borderColor: idTheme.accent,
                     backgroundColor: withAlpha(idTheme.accent, 0.2),
@@ -364,7 +426,7 @@ function renderIdentityChart(logs) {
                         afterLabel: (context) => {
                             if (context.dataset.type === 'bar') {
                                 const idx = context.dataIndex;
-                                return `Entries: ${counts[idx]}`;
+                                return `${entryCountLabel}: ${counts[idx]}`;
                             }
                             return '';
                         }
@@ -381,14 +443,14 @@ function renderIdentityChart(logs) {
                     max: 5,
                     ticks: { stepSize: 1, callback: value => value.toFixed(1) },
                     grid: { color: COLORS.grid },
-                    title: { display: true, text: 'Alignment Score (1-5)', font: { size: 11 } }
+                    title: { display: true, text: alignScoreLabel, font: { size: 11 } }
                 },
                 y1: {
                     beginAtZero: true,
                     position: 'right',
                     grid: { drawOnChartArea: false },
                     ticks: { precision: 0 },
-                    title: { display: true, text: 'Entry Count', font: { size: 11 } }
+                    title: { display: true, text: entryCountLabel, font: { size: 11 } }
                 }
             }
         }
@@ -403,12 +465,20 @@ function renderCandlestickChart(logs) {
     const weeklyOHLC = {};
     const sorted = [...logs].sort((a,b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
 
+    const wickLabel = "Wick";
+    const bodyLabel = "Body";
+    const highLabel = "High";
+    const openLabel = "Open";
+    const closeLabel = "Close";
+    const lowLabel = "Low";
+
     sorted.forEach(r => {
         const w = getWeekNumber(r.date);
         const delta = r.hours - 8;
         
         if (!weeklyOHLC[w]) {
-            weeklyOHLC[w] = { week: `Week ${w}`, open: delta, close: delta, high: delta, low: delta };
+            const label = `Week ${w}`;
+            weeklyOHLC[w] = { week: label, open: delta, close: delta, high: delta, low: delta };
         } else {
             weeklyOHLC[w].close = delta; 
             weeklyOHLC[w].high = Math.max(weeklyOHLC[w].high, delta);
@@ -429,7 +499,7 @@ function renderCandlestickChart(logs) {
             labels: weeks.map(w => w.week),
             datasets: [
                 {
-                    label: 'Wick',
+                    label: wickLabel,
                     data: weeks.map(w => [w.low, w.high]),
                     backgroundColor: weeks.map(w => w.close >= w.open ? withAlpha(COLORS.good, 0.53) : withAlpha(COLORS.accent, 0.53)),
                     borderColor: 'transparent',
@@ -438,7 +508,7 @@ function renderCandlestickChart(logs) {
                     order: 2
                 },
                 {
-                    label: 'Body',
+                    label: bodyLabel,
                     data: weeks.map(w => [Math.min(w.open, w.close), Math.max(w.open, w.close)]),
                     backgroundColor: weeks.map(w => w.close >= w.open ? COLORS.good : COLORS.accent),
                     borderColor: weeks.map(w => w.close >= w.open ? COLORS.good : COLORS.accent),
@@ -459,10 +529,10 @@ function renderCandlestickChart(logs) {
                         label: (context) => {
                             const d = weeks[context.dataIndex];
                             return [
-                                `High:  ${d.high > 0 ? '+' : ''}${d.high.toFixed(1)}h`,
-                                `Open:  ${d.open > 0 ? '+' : ''}${d.open.toFixed(1)}h`,
-                                `Close: ${d.close > 0 ? '+' : ''}${d.close.toFixed(1)}h`,
-                                `Low:   ${d.low > 0 ? '+' : ''}${d.low.toFixed(1)}h`
+                                `${highLabel}:  ${d.high > 0 ? '+' : ''}${d.high.toFixed(1)}h`,
+                                `${openLabel}:  ${d.open > 0 ? '+' : ''}${d.open.toFixed(1)}h`,
+                                `${closeLabel}: ${d.close > 0 ? '+' : ''}${d.close.toFixed(1)}h`,
+                                `${lowLabel}:   ${d.low > 0 ? '+' : ''}${d.low.toFixed(1)}h`
                             ];
                         }
                     }
@@ -490,13 +560,18 @@ function renderContextualCharts(logs, selectedWeek) {
             return cumulativeDelta;
         });
         
+        const dailyDeltaLabel = "Daily Delta";
+        const cumulativeDeltaLabel = "Cumulative Delta";
+        const dailyDeltaHoursLabel = "Daily Delta (hours)";
+        const cumulativeHoursLabel = "Cumulative (hours)";
+
         charts.delta = new Chart(deltaCanvas.getContext('2d'), {
             type: 'bar',
             data: {
                 labels: logs.map(r => r.date),
                 datasets: [
                     {
-                        label: 'Daily Delta',
+                        label: dailyDeltaLabel,
                         data: deltas,
                         backgroundColor: deltas.map(d => d >= 0 ? withAlpha(COLORS.good, 0.53) : withAlpha(COLORS.accent, 0.53)),
                         borderColor: deltas.map(d => d >= 0 ? COLORS.good : COLORS.accent),
@@ -506,7 +581,7 @@ function renderContextualCharts(logs, selectedWeek) {
                         order: 2
                     },
                     {
-                        label: 'Cumulative Delta',
+                        label: cumulativeDeltaLabel,
                         type: 'line',
                         data: cumulativeDeltas,
                         borderColor: boostColor(COLORS.accent, 0.22),
@@ -535,12 +610,12 @@ function renderContextualCharts(logs, selectedWeek) {
                     tooltip: {
                         callbacks: {
                             label: (context) => {
-                                if (context.dataset.label === 'Daily Delta') {
+                                if (context.dataset.label === dailyDeltaLabel) {
                                     const val = context.parsed.y;
-                                    return `Daily: ${val > 0 ? '+' : ''}${val.toFixed(1)}h`;
+                                    return `${dailyDeltaLabel}: ${val > 0 ? '+' : ''}${val.toFixed(1)}h`;
                                 } else {
                                     const val = context.parsed.y;
-                                    return `Cumulative: ${val > 0 ? '+' : ''}${val.toFixed(1)}h`;
+                                    return `${cumulativeDeltaLabel}: ${val > 0 ? '+' : ''}${val.toFixed(1)}h`;
                                 }
                             }
                         }
@@ -551,14 +626,14 @@ function renderContextualCharts(logs, selectedWeek) {
                         type: 'linear',
                         position: 'left',
                         grid: { color: COLORS.grid },
-                        title: { display: true, text: 'Daily Delta (hours)', font: { size: 10 } },
+                        title: { display: true, text: dailyDeltaHoursLabel, font: { size: 10 } },
                         ticks: { callback: value => (value > 0 ? '+' : '') + value + 'h' }
                     },
                     y1: {
                         type: 'linear',
                         position: 'right',
                         grid: { drawOnChartArea: false },
-                        title: { display: true, text: 'Cumulative (hours)', font: { size: 10 } },
+                        title: { display: true, text: cumulativeHoursLabel, font: { size: 10 } },
                         ticks: { callback: value => (value > 0 ? '+' : '') + value + 'h' }
                     },
                     x: { display: true }
@@ -566,7 +641,7 @@ function renderContextualCharts(logs, selectedWeek) {
             }
         });
     }
-    renderCandlestickChart(allLogs);
+    renderCandlestickChart(logs);
 }
 
 function renderRadarChart(logs) {
@@ -574,7 +649,9 @@ function renderRadarChart(logs) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // Use default labels for radar logic but we could localize display if needed
+    const avgHoursLabel = "Avg Hours";
+
     const dayAverages = [0, 0, 0, 0, 0, 0];
     const dayCounts = [0, 0, 0, 0, 0, 0];
 
@@ -595,7 +672,7 @@ function renderRadarChart(logs) {
         data: {
             labels: days,
             datasets: [{
-                label: 'Avg Hours',
+                label: avgHoursLabel,
                 data: data,
                 borderColor: boostColor(COLORS.accent, 0.22),
                 backgroundColor: withAlpha(boostColor(COLORS.accent, 0.22), 0.12),
@@ -654,16 +731,79 @@ function renderHourDistChart(logs) {
                     COLORS.good,
                     COLORS.excellent
                 ],
-                borderWidth: 1,
-                borderColor: COLORS.grid
+                borderWidth: 0,
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '70%',
             plugins: {
-                legend: { position: 'right', labels: { color: COLORS.text, boxWidth: 12, font: { size: 10 } } }
+                legend: {
+                    position: 'right',
+                    labels: { color: COLORS.text, font: { size: 11 }, padding: 15 }
+                }
+            },
+            cutout: '70%',
+            spacing: 2
+        }
+    });
+}
+
+function renderWeeklyEffortChart(logs) {
+    const canvas = document.getElementById('weeklyEffortChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const weeklyData = {};
+    logs.forEach(r => {
+        const w = getWeekNumber(r.date);
+        if (!weeklyData[w]) weeklyData[w] = { ojt: 0, personal: 0 };
+        weeklyData[w].ojt += r.hours;
+        weeklyData[w].personal += (r.personalHours || 0);
+    });
+
+    const sortedWeeks = Object.keys(weeklyData).map(Number).sort((a,b) => a - b);
+    const labels = sortedWeeks.map(w => `Week ${w}`);
+    const ojtHours = sortedWeeks.map(w => weeklyData[w].ojt);
+    const personalHours = sortedWeeks.map(w => weeklyData[w].personal);
+
+    charts.weeklyEffort = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'OJT Hours',
+                    data: ojtHours,
+                    backgroundColor: COLORS.accent,
+                    borderRadius: 4
+                },
+                {
+                    label: 'Personal Hours',
+                    data: personalHours,
+                    backgroundColor: COLORS.excellent,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { color: COLORS.text, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        footer: (tooltipItems) => {
+                            const total = tooltipItems.reduce((s, i) => s + i.parsed.y, 0);
+                            return `Total Effort: ${total.toFixed(1)}h`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: { stacked: true, grid: { color: COLORS.grid }, title: { display: true, text: 'Hours', color: COLORS.text } }
             }
         }
     });
