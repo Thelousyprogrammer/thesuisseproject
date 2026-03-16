@@ -3,6 +3,8 @@
  * Handles synthetic data injection and what-if scenarios
  */
 
+let simAnchorDate = null; // Tracks the start of the current simulation sequence
+
 function _getSimStartDate() {
     const modeEl = document.getElementById("simStartMode");
     const mode = modeEl ? modeEl.value : "last";
@@ -10,17 +12,17 @@ function _getSimStartDate() {
         const dateEl = document.getElementById("simStartDate");
         const dateVal = dateEl ? dateEl.value : "";
         if (dateVal) {
-            // Return a Date set to midnight of that day
-            const d = new Date(dateVal + "T00:00:00");
-            if (!isNaN(d.getTime())) return d;
+            // Use core utility to parse YYYY-MM-DD into a UTC midnight Date object
+            const d = parseDateKeyGmt8(dateVal);
+            if (d && !isNaN(d.getTime())) return d;
         }
     }
     // Default: after last log
     if (allLogs.length > 0) {
         const sorted = [...allLogs].sort((a,b) => new Date(a.date) - new Date(b.date));
-        return new Date(sorted[sorted.length - 1].date);
+        return parseDateKeyGmt8(toGmt8DateKey(sorted[sorted.length - 1].date));
     }
-    return new Date();
+    return nowGmt8StartOfDay();
 }
 
 function toggleSimStartDate(mode) {
@@ -42,10 +44,9 @@ function _buildSimPreviewLogs(simHours, simDaysToAdd) {
     const lastDate = _getSimStartDate();
     const previewEntries = [];
     for (let i = 1; i <= simDaysToAdd; i++) {
-        const nextDate = new Date(lastDate);
-        nextDate.setDate(nextDate.getDate() + i);
+        const nextDate = addDaysGmt8(lastDate, i);
         previewEntries.push({
-            date: nextDate.toISOString().split('T')[0],
+            date: toGmt8DateKey(nextDate),
             hours: simHours
         });
     }
@@ -122,6 +123,21 @@ function toggleSimulation() {
         if (simDaysInput) simDaysInput.removeEventListener("input", previewSimulation);
 
         resetTelemetry();
+        simAnchorDate = null;
+        updateSimTrackerUI();
+    }
+}
+
+function updateSimTrackerUI() {
+    const tracker = document.getElementById("simTracker");
+    const display = document.getElementById("simAnchorDateDisplay");
+    if (!tracker || !display) return;
+
+    if (simAnchorDate) {
+        tracker.style.display = "block";
+        display.innerText = formatGmt8DateLabel(simAnchorDate, { month: "short", day: "numeric", year: "numeric" });
+    } else {
+        tracker.style.display = "none";
     }
 }
 
@@ -133,13 +149,17 @@ function runSimulation() {
     const simDaysToAdd = parseInt(document.getElementById("simDays").value) || 5;
     
     const lastDate = _getSimStartDate();
+    
+    // Set anchor date on first injection if not set
+    if (!simAnchorDate) {
+        simAnchorDate = addDaysGmt8(lastDate, 1);
+        updateSimTrackerUI();
+    }
 
     const newEntries = [];
     for (let i = 1; i <= simDaysToAdd; i++) {
-        const nextDate = new Date(lastDate);
-        nextDate.setDate(nextDate.getDate() + i);
-        
-        const dateStr = nextDate.toISOString().split('T')[0];
+        const nextDate = addDaysGmt8(lastDate, i);
+        const dateStr = toGmt8DateKey(nextDate);
         
         newEntries.push({
             date: dateStr,
@@ -164,6 +184,13 @@ function runSimulation() {
     allLogs = [...merged, ...newEntries];
     allLogs.sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
     
+    // Auto-advance Specific Start Date if applicable to help with chaining
+    if (isSpecific && newEntries.length > 0) {
+        const lastEntry = newEntries[newEntries.length - 1];
+        const dateInput = document.getElementById("simStartDate");
+        if (dateInput) dateInput.value = lastEntry.date;
+    }
+
     // Re-render EVERYTHING
     renderTelemetry(allLogs);
     

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -46,6 +46,7 @@
           <button class="theme-switch-card telemetry-btn btn-theme-mclaren" onclick="setTelemetryTheme('mclaren')">McLaren</button>
           <button class="theme-switch-card telemetry-btn btn-theme-ferrari" onclick="setTelemetryTheme('ferrari')">Ferrari</button>
           <button class="theme-switch-card telemetry-btn btn-theme-kiki" onclick="setTelemetryTheme('kiki')">Kiki</button>
+          <button class="theme-switch-card telemetry-btn btn-theme-ztmy" onclick="setTelemetryTheme('ztmy')">ずとまよ</button>
         </div>
         <button class="telemetry-btn" onclick="window.location.href='index.html'">Back to DTR</button>
       </div>
@@ -86,6 +87,9 @@
           <button class="telemetry-btn btn-accent" onclick="runSimulation()">Inject Sim Data</button>
         </div>
         <p class="sim-note">Note: Simulated data is temporary and won't affect your real DTR records unless synced.</p>
+        <div id="simTracker" style="display:none; margin-top: 10px; padding: 8px 12px; background: rgba(var(--accent-rgb, 255, 30, 0), 0.1); border-left: 3px solid var(--accent); font-size: 13px; border-radius: 0 4px 4px 0;">
+          <span style="opacity: 0.8;">Simulation Anchor:</span> <strong id="simAnchorDateDisplay" style="color: var(--accent);">N/A</strong>
+        </div>
       </div>
     </div>
   </section>

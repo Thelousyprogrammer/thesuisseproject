@@ -4,7 +4,7 @@
  */
 (function () {
     const DEFAULT_THEME = "f1";
-    const ALLOWED_THEMES = new Set(["f1", "f1-light", "cadillac", "apx", "mclaren", "ferrari", "kiki"]);
+    const ALLOWED_THEMES = new Set(["f1", "f1-light", "cadillac", "apx", "mclaren", "ferrari", "kiki", "ztmy"]);
     const THEME_KEY = "user-theme";
     const EVENT_KEY = "user-theme-updated-at";
     const BC_NAME = "dtr-theme-sync";

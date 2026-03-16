@@ -862,5 +862,181 @@
 }
 
 /* ==========================================
-   7. ZUTOMAYO (Violet/Green/White/Red)
+   7. ZUTOMAYO (ZTMY - Technical Violet/Green)
    ========================================== */
+
+[data-theme="ztmy"] {
+  /* Brand Palette */
+  --ztmy-purple: #8E6EBA;
+  --ztmy-green: #87C07A;
+  --ztmy-black: #000000;
+  --ztmy-white: #FFFFFF;
+  --ztmy-red: #FD1A2E;
+
+  /* Foundation */
+  --bg: var(--ztmy-black);
+  --surface: #0a0a0a;
+  --panel: rgba(0, 0, 0, 0.85);
+  --text: var(--ztmy-green);
+  --text-dim: #a0a0a0;
+  --border: var(--ztmy-purple);
+  --accent: var(--ztmy-purple);
+  --accent-secondary: var(--ztmy-green);
+  --accent-aux: #d8b5a2;
+
+  /* Level Colors */
+  --level-0: #1a1a1a;
+  --level-1: var(--ztmy-red);
+  --level-2: var(--ztmy-green);
+  --level-3: var(--ztmy-purple);
+
+  /* JS Readability Mappings */
+  --color-neutral: #a0a0a0;
+  --color-warning: var(--ztmy-red);
+  --color-good: var(--ztmy-green);
+  --color-excellent: var(--ztmy-purple);
+
+  /* Chart Styles */
+  --chart-grid: rgba(142, 110, 186, 0.1);
+  --chart-fill: rgba(142, 110, 186, 0.15);
+  --chart-ideal: rgba(135, 192, 122, 0.3);
+  --chart-aux: #d8b5a2;
+
+  /* Typography */
+  --font-heading: 'JetBrains Mono Nerd Font', 'Space Grotesk', monospace;
+  --font-body: 'JetBrains Mono Nerd Font', monospace;
+}
+
+[data-theme="ztmy"] body {
+  background-color: var(--ztmy-black) !important;
+  position: relative;
+  isolation: isolate;
+}
+
+[data-theme="ztmy"] body::before {
+  content: "";
+  position: fixed;
+  inset: -50px;
+  z-index: -1;
+  --c: 7px;
+  background-color: var(--ztmy-black);
+  background-image: 
+    radial-gradient(circle at 50% 50%, #0000 1.5px, var(--ztmy-black) 0 var(--c), #0000 var(--c)),
+    radial-gradient(circle at 50% 50%, #0000 1.5px, var(--ztmy-black) 0 var(--c), #0000 var(--c)),
+    radial-gradient(circle at 50% 50%, var(--ztmy-red), rgba(253, 26, 46, 0) 60%),
+    radial-gradient(circle at 50% 50%, var(--accent-aux), rgba(216, 181, 162, 0) 60%),
+    radial-gradient(circle at 50% 50%, var(--ztmy-green), rgba(135, 192, 122, 0) 60%),
+    radial-gradient(ellipse at 50% 50%, var(--ztmy-purple), rgba(142, 110, 186, 0) 60%);
+  background-size:
+    12px 20.7846097px,
+    12px 20.7846097px,
+    200% 200%,
+    200% 200%,
+    200% 200%,
+    200% 20.7846097px;
+  --p: 0px 0px, 6px 10.39230485px;
+  background-position:
+    var(--p),
+    0% 0%,
+    0% 0%,
+    0% 0%,
+    0% 0%,
+    0% 0%;
+  animation:
+    ztmy-wee 40s linear infinite,
+    ztmy-filt 6s linear infinite;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+@keyframes ztmy-filt {
+  0% { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(360deg); }
+}
+
+@keyframes ztmy-wee {
+  0% {
+    background-position:
+      var(--p),
+      800% 400%,
+      1000% -400%,
+      -1200% -600%,
+      400% 41.5692194px;
+  }
+  to {
+    background-position:
+      var(--p),
+      0% 0%,
+      0% 0%,
+      0% 0%,
+      0% 0%;
+  }
+}
+
+[data-theme="ztmy"] .card,
+[data-theme="ztmy"] .stat-card,
+[data-theme="ztmy"] .telemetry-card,
+[data-theme="ztmy"] .chart-container {
+  background: var(--surface) !important;
+  border: 1px solid var(--ztmy-purple) !important;
+  box-shadow: 0 0 15px rgba(142, 110, 186, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="ztmy"] .card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  background: var(--ztmy-purple);
+}
+
+[data-theme="ztmy"] h1,
+[data-theme="ztmy"] h2,
+[data-theme="ztmy"] h3 {
+  font-family: var(--font-heading) !important;
+  color: var(--ztmy-purple);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+[data-theme="ztmy"] button:not([class*="btn-theme-"]) {
+  background: transparent;
+  border: 1px solid var(--ztmy-purple);
+  color: var(--ztmy-purple);
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+[data-theme="ztmy"] button:not([class*="btn-theme-"]):hover {
+  background: var(--ztmy-purple);
+  color: var(--ztmy-black);
+  box-shadow: 0 0 20px rgba(142, 110, 186, 0.4);
+}
+
+[data-theme="ztmy"] .btn-destructive {
+  border-color: var(--ztmy-red) !important;
+  color: var(--ztmy-red) !important;
+}
+
+[data-theme="ztmy"] .btn-destructive:hover {
+  background: var(--ztmy-red) !important;
+  color: var(--ztmy-white) !important;
+  box-shadow: 0 0 20px rgba(253, 26, 46, 0.4) !important;
+}
+
+/* ZTMY Button specifically */
+.btn-theme-ztmy {
+  background: var(--ztmy-purple, #8E6EBA) !important;
+  color: #000 !important;
+  border: 1px solid #8E6EBA !important;
+  font-family: 'JetBrains Mono Nerd Font', monospace !important;
+  font-weight: 700 !important;
+}
+
+.btn-theme-ztmy:hover {
+  background: #a388cc !important;
+  box-shadow: 0 0 12px rgba(142, 110, 186, 0.6);
+}

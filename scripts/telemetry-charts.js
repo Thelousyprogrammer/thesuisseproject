@@ -117,7 +117,7 @@ function renderTrajectoryChart(logs, customPace = null) {
 
     const lineAccent = boostColor(COLORS.accent, 0.2);
     const lineExcellent = boostColor(COLORS.excellent, 0.18);
-    const lineText = boostColor(COLORS.text, 0.12);
+    const lineText = boostColor(COLORS.aux || COLORS.text, 0.12);
 
     const series = buildTrajectorySeries({ logs, paceOverride: customPace });
     const labels = series.labels;
@@ -400,9 +400,9 @@ function renderIdentityChart(logs) {
                     type: 'line',
                     label: entryCountLabel,
                     data: counts,
-                    borderColor: idTheme.accent,
-                    backgroundColor: withAlpha(idTheme.accent, 0.2),
-                    pointBackgroundColor: idTheme.accent,
+                    borderColor: COLORS.aux || idTheme.accent,
+                    backgroundColor: withAlpha(COLORS.aux || idTheme.accent, 0.2),
+                    pointBackgroundColor: COLORS.aux || idTheme.accent,
                     pointRadius: 3,
                     pointBorderColor: boostColor(COLORS.text, 0.1),
                     pointBorderWidth: 1,
@@ -584,10 +584,10 @@ function renderContextualCharts(logs, selectedWeek) {
                         label: cumulativeDeltaLabel,
                         type: 'line',
                         data: cumulativeDeltas,
-                        borderColor: boostColor(COLORS.accent, 0.22),
+                        borderColor: COLORS.aux || boostColor(COLORS.accent, 0.22),
                         backgroundColor: 'transparent',
                         borderWidth: 3,
-                        pointBackgroundColor: boostColor(COLORS.accent, 0.22),
+                        pointBackgroundColor: COLORS.aux || boostColor(COLORS.accent, 0.22),
                         pointBorderColor: boostColor(COLORS.text, 0.1),
                         pointBorderWidth: 1,
                         pointRadius: 3,
@@ -674,10 +674,10 @@ function renderRadarChart(logs) {
             datasets: [{
                 label: avgHoursLabel,
                 data: data,
-                borderColor: boostColor(COLORS.accent, 0.22),
-                backgroundColor: withAlpha(boostColor(COLORS.accent, 0.22), 0.12),
+                borderColor: COLORS.aux || boostColor(COLORS.accent, 0.22),
+                backgroundColor: withAlpha(COLORS.aux || boostColor(COLORS.accent, 0.22), 0.12),
                 borderWidth: 3,
-                pointBackgroundColor: boostColor(COLORS.accent, 0.24),
+                pointBackgroundColor: COLORS.aux || boostColor(COLORS.accent, 0.24),
                 pointRadius: 3
             }]
         },
@@ -729,7 +729,7 @@ function renderHourDistChart(logs) {
                     COLORS.warning,
                     COLORS.accent,
                     COLORS.good,
-                    COLORS.excellent
+                    COLORS.aux || COLORS.excellent
                 ],
                 borderWidth: 0,
                 hoverOffset: 4
@@ -782,7 +782,7 @@ function renderWeeklyEffortChart(logs) {
                 {
                     label: 'Personal Hours',
                     data: personalHours,
-                    backgroundColor: COLORS.excellent,
+                    backgroundColor: COLORS.aux || COLORS.excellent,
                     borderRadius: 4
                 }
             ]

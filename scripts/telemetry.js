@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TELEMETRY MAIN CONTROLLER
  */
 
@@ -35,6 +35,7 @@ function getThemeValues() {
         excellent: style.getPropertyValue('--level-3').trim() || '#FF00FF',
         good: style.getPropertyValue('--level-2').trim() || '#00FF00',
         warning: style.getPropertyValue('--level-1').trim() || '#FFF000',
+        aux: style.getPropertyValue('--chart-aux').trim() || null,
         text: style.getPropertyValue('--text').trim() || '#ffffff',
         grid: style.getPropertyValue('--chart-grid').trim() || 'rgba(255,255,255,0.05)',
         fill: style.getPropertyValue('--chart-fill').trim() || 'rgba(255,255,255,0.02)',
@@ -364,6 +365,7 @@ function updateView() {
     if (!select) return;
     const val = select.value;
     let filtered = allLogs;
+
     if (val !== "all") {
         filtered = allLogs.filter(r => getWeekNumber(r.date) == val);
     }

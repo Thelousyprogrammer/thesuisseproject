@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DTR CORE MODULE
  * Configuration, Models, and Fundamental Utilities
  */
@@ -15,7 +15,8 @@ const DTR_COLORS = {
     neutral: "var(--color-neutral)",
     warning: "var(--color-warning)",
     good: "var(--color-good)",
-    excellent: "var(--color-excellent)"
+    excellent: "var(--color-excellent)",
+    aux: "var(--chart-aux)"
 };
 
 let dailyRecords = []; // Global state for the DTR app
@@ -459,7 +460,8 @@ function updateFavicon(themeName) {
         'apx': 'favicons/APXFavicon32.png',
         'mclaren': 'favicons/McLFavicon32.png',
         'kiki': 'favicons/KikiFavicon32.png',
-        'ferrari': 'favicons/FerrariFavicon32.png'
+        'ferrari': 'favicons/FerrariFavicon32.png',
+        'ztmy': 'favicons/ZTMYFavicon32.png'
         // fallback or other themes can be added here
     };
     const href = map[themeName] || map['f1'];
@@ -593,7 +595,9 @@ function buildTrajectorySeries({ logs = dailyRecords, paceOverride = null, start
     const projectionStartDate = lastLogDate && lastLogDate > today ? lastLogDate : today;
 
     const logMap = {};
-    normalizedLogs.forEach((l) => { logMap[l.dateKey] = l.hours; });
+    normalizedLogs.forEach((l) => {
+        logMap[l.dateKey] = (logMap[l.dateKey] || 0) + l.hours;
+    });
 
     const labels = [];
     const labelDateKeys = [];
