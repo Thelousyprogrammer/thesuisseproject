@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Custom DTR | Delta Time System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&display=swap" rel="stylesheet">
+  <title data-i18n="head_title">Custom DTR | Delta Time System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&family=Noto+Sans+TC:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/telemetry.css">
   <link rel="stylesheet" href="css/theme.css">
@@ -25,126 +25,131 @@
 
   <!-- DTR Header / Label -->
   <div class="card">
-    <h1>Custom Daily Time Record (DTR)</h1>
-    <p class="subtitle">
+    <h1 data-i18n="app_title">Custom Daily Time Record (DTR)</h1>
+    <p class="subtitle" data-i18n="app_subtitle">
       Formula 1 Delta System • Target-Based Productivity Telemetry
     </p>
-    <button class="telemetry-btn" type="button" onclick="window.location.href='faq.html'">FAQ</button>
+      <label for="languageSelect" style="opacity:0.85;" data-i18n="language">Language</label>
+      <select id="languageSelect" style="max-width: 220px;"></select>
+    <button id="f1LightToggleBtn" class="telemetry-btn light-toggle-btn" type="button" onclick="toggleF1LightMode()" data-i18n="light_off">Light: Off</button>
+    <button class="telemetry-btn" type="button" onclick="window.location.href='faq.html'" data-i18n="faq">FAQ</button>
   </div>
 
   <!-- Theme Switcher -->
   <div class="card">
-    <h2>DTR Theme</h2>
-    <button class="btn-theme-f1" onclick="setTheme('f1')">F1 Theme</button>
-    <button class="btn-theme-cadillac" onclick="setTheme('cadillac')">Cadillac</button>
-    <button class="btn-theme-apx" onclick="setTheme('apx')">APX GP</button>
-    <button class="btn-theme-mclaren" onclick="setTheme('mclaren')">McLaren</button>
-    <button class="btn-theme-ferrari" onclick="setTheme('ferrari')">Ferrari</button>
-    <span class="export-divider">|</span>
-    <button class="btn-theme-kiki" onclick="setTheme('kiki')">Kiki's Delivery Service</button>
+    <h2 data-i18n="dtr_theme">DTR Theme</h2>
+    <div class="theme-switch-grid">
+      <button class="theme-switch-card btn-theme-f1" onclick="setTheme('f1')" data-i18n="theme_formula1">Formula 1</button>
+      <button class="theme-switch-card btn-theme-cadillac" onclick="setTheme('cadillac')" data-i18n="theme_cadillac">Cadillac</button>
+      <button class="theme-switch-card btn-theme-apx" onclick="setTheme('apx')" data-i18n="theme_apx">APX GP</button>
+      <button class="theme-switch-card btn-theme-mclaren" onclick="setTheme('mclaren')" data-i18n="theme_mclaren">McLaren</button>
+      <button class="theme-switch-card btn-theme-ferrari" onclick="setTheme('ferrari')" data-i18n="theme_ferrari">Ferrari</button>
+      <button class="theme-switch-card btn-theme-kiki" onclick="setTheme('kiki')" data-i18n="theme_kiki">Kiki</button>
+      <button class="theme-switch-card btn-theme-ztmy" onclick="setTheme('ztmy')" data-i18n="theme_ztmy">ずとまよ</button>
+    </div>
   </div>
 
   <div class="card">
-    <h2>OJT Timeline Settings</h2>
+    <h2 data-i18n="ojt_timeline_settings">OJT Timeline Settings</h2>
     <div class="step">
-      <label for="ojtStartDate">Starting Date</label>
+      <label for="ojtStartDate" data-i18n="starting_date">Starting Date</label>
       <input type="date" id="ojtStartDate">
-      <small id="ojtStartHelp" style="opacity:0.75;">Used as week 1 anchor for viewer, graphs, and telemetry.</small>
+      <small id="ojtStartHelp" style="opacity:0.75;" data-i18n="ojt_start_help">Used as week 1 anchor for viewer, graphs, and telemetry.</small>
     </div>
     <div class="step">
-      <label for="ojtRequiredHours">Required OJT Hours</label>
-      <input type="number" id="ojtRequiredHours" min="1" step="1" placeholder="e.g. 500">
-      <small style="opacity:0.75;">Used for overall target, remaining hours, and forecast completion.</small>
+      <label for="ojtRequiredHours" data-i18n="required_ojt_hours">Required OJT Hours</label>
+      <input type="number" id="ojtRequiredHours" min="1" step="1" placeholder="e.g. 500" data-i18n-placeholder="placeholder_required_hours">
+      <small style="opacity:0.75;" data-i18n="ojt_required_help">Used for overall target, remaining hours, and forecast completion.</small>
     </div>
     <div class="step">
-      <label for="semesterEndDate">Semester End Date</label>
+      <label for="semesterEndDate" data-i18n="semester_end_date">Semester End Date</label>
       <input type="date" id="semesterEndDate">
-      <small style="opacity:0.75;">Forecasting and required pace are computed up to this date.</small>
+      <small style="opacity:0.75;" data-i18n="ojt_end_help">Forecasting and required pace are computed up to this date.</small>
     </div>
     <div class="step">
-      <label for="ojtTimeZone">Timezone</label>
-      <select id="ojtTimeZone" title="Timezone list based on IANA region IDs"></select>
-      <small style="opacity:0.75;">Used to interpret date boundaries and "today" for week/forecast calculations.</small>
+      <label for="ojtTimeZone" data-i18n="timezone">Timezone</label>
+      <select id="ojtTimeZone" title="Timezone list based on IANA region IDs" data-i18n-title="timezone_list_title"></select>
+      <small style="opacity:0.75;" data-i18n="ojt_tz_help">Used to interpret date boundaries and "today" for week/forecast calculations.</small>
     </div>
-    <button type="button" onclick="saveOjtStartDateFromUI()">Save Timeline Settings</button>
+    <button type="button" onclick="saveOjtStartDateFromUI()" data-i18n="save_timeline_settings">Save Timeline Settings</button>
   </div>
 
   <!-- DTR Input Form -->
   <div class="card">
-    <h2>Session Input</h2>
+    <h2 data-i18n="session_input">Session Input</h2>
 
     <div class="step">
-      <label for="date">DTR Date</label>
+      <label for="date" data-i18n="dtr_date">DTR Date</label>
       <input type="date" id="date">
     </div>
 
     <div class="step">
-      <label for="hours">Hours Worked</label>
-      <input type="number" id="hours" placeholder="e.g. 8">
+      <label for="hours" data-i18n="hours_worked">Hours Worked</label>
+      <input type="number" id="hours" placeholder="e.g. 8" data-i18n-placeholder="placeholder_hours_example">
     </div>
 
-    <p id="weeklyCounter"></p>
+    <p id="weeklyCounter" style="font-size: 0.9em; opacity: 0.85; margin: 0 0 16px 0; font-family: var(--font-body); letter-spacing: 0.5px;"></p>
 
     <div class="step">
-      <label for="reflection">Daily Reflection</label>
-      <textarea id="reflection" placeholder="What did you learn today?"></textarea>
+      <label for="reflection" data-i18n="daily_reflection">Daily Reflection</label>
+      <textarea id="reflection" placeholder="What did you learn today?" data-i18n-placeholder="placeholder_reflection"></textarea>
     </div>
 
     <div class="step">
-      <label for="accomplishments">Accomplishments (one per line)</label>
+      <label for="accomplishments" data-i18n="accomplishments_per_line">Accomplishments (one per line)</label>
       <textarea id="accomplishments"
-        placeholder="Implemented UI&#10;Fixed bug in script"></textarea>
+        placeholder="Implemented UI&#10;Fixed bug in script" data-i18n-placeholder="placeholder_accomplishments"></textarea>
     </div>
 
     <div class="step">
-      <label for="tools">Tools Used (comma separated)</label>
-      <input type="text" id="tools" placeholder="VS Code, Chrome, Git">
+      <label for="tools" data-i18n="tools_used">Tools Used (comma separated)</label>
+      <input type="text" id="tools" placeholder="VS Code, Chrome, Git" data-i18n-placeholder="placeholder_tools">
     </div>
 
     <!-- LEVEL 2 TELEMETRY FIELDS -->
 <div class="l2-telemetry-container">
-  <h3 class="l2-title">Level 2 Telemetry (Advanced)</h3>
+  <h3 class="l2-title" data-i18n="level2_telemetry">Level 2 Telemetry (Advanced)</h3>
   
   <div class="edit-telemetry-grid">
     <div class="step">
-      <label for="personalHours">Personal Project Hours</label>
-      <input type="number" id="personalHours" step="0.5" placeholder="Deep work hours">
+      <label for="personalHours" data-i18n="personal_project_hours">Personal Project Hours</label>
+      <input type="number" id="personalHours" step="0.5" placeholder="Deep work hours" data-i18n-placeholder="placeholder_deep_work_hours">
     </div>
     <div class="step">
-      <label for="sleepHours">Sleep (Hours)</label>
-      <input type="number" id="sleepHours" step="0.5" placeholder="last night's rest">
+      <label for="sleepHours" data-i18n="sleep_hours">Sleep (Hours)</label>
+      <input type="number" id="sleepHours" step="0.5" placeholder="last night's rest" data-i18n-placeholder="placeholder_last_night_rest">
     </div>
     <div class="step">
-      <label for="recoveryHours">Recovery Hours</label>
-      <input type="number" id="recoveryHours" step="0.5" placeholder="Rest/Recharge">
+      <label for="recoveryHours" data-i18n="recovery_hours">Recovery Hours</label>
+      <input type="number" id="recoveryHours" step="0.5" placeholder="Rest/Recharge" data-i18n-placeholder="placeholder_rest_recharge">
     </div>
     <div class="step">
-      <label for="identityScore">Identity Alignment (1-5)</label>
+      <label for="identityScore" data-i18n="identity_alignment">Identity Alignment (1-5)</label>
       <select id="identityScore">
-        <option value="0">Not Set</option>
-        <option value="1">1 - Drifting</option>
-        <option value="2">2 - Re-centering</option>
-        <option value="3">3 - Aligned</option>
-        <option value="4">4 - Compounding</option>
-        <option value="5">5 - Mission Locked</option>
+        <option value="0" data-i18n="identity_0">Not Set</option>
+        <option value="1" data-i18n="identity_1">1 - Drifting</option>
+        <option value="2" data-i18n="identity_2">2 - Re-centering</option>
+        <option value="3" data-i18n="identity_3">3 - Aligned</option>
+        <option value="4" data-i18n="identity_4">4 - Compounding</option>
+        <option value="5" data-i18n="identity_5">5 - Mission Locked</option>
       </select>
     </div>
   </div>
 
   <div class="l2-grid-commute">
     <div class="step">
-      <label for="commuteTotal">Total Commute (min)</label>
-      <input type="number" id="commuteTotal" placeholder="Total time">
+      <label for="commuteTotal" data-i18n="total_commute_min">Total Commute (min)</label>
+      <input type="number" id="commuteTotal" placeholder="Total time" data-i18n-placeholder="placeholder_total_time">
     </div>
     <div class="step">
-      <label for="commuteProductive">Productive Commute (min)</label>
-      <input type="number" id="commuteProductive" placeholder="Time spent working">
+      <label for="commuteProductive" data-i18n="productive_commute_min">Productive Commute (min)</label>
+      <input type="number" id="commuteProductive" placeholder="Time spent working" data-i18n-placeholder="placeholder_time_spent_working">
     </div>
   </div>
 </div>
 
     <div class="step">
-      <label for="images">Upload Images</label>
+      <label for="images" data-i18n="upload_images">Upload Images</label>
       <input type="file" id="images" multiple accept="image/*">
     
       <div id="imagePreview"
@@ -156,10 +161,12 @@
       </div>
     </div>
 
-    <button onclick="submitDTR()">Save Day</button>
-    <button class="btn-destructive" onclick="deleteLastRecord()">Delete Last Entry</button>
-    <button class="btn-destructive" onclick="clearAllRecords()">Clear All Records</button>
-    <button class="btn-destructive" onclick="clearDTRForm()">Clear DTR Form</button>
+    <button onclick="submitDTR()" data-i18n="save_day">Save Day</button>
+    <button class="btn-destructive" onclick="deleteLastRecord()" data-i18n="delete_last_entry">Delete Last Entry</button>
+    <button class="btn-destructive" onclick="clearAllRecords()" data-i18n="clear_all_records">Clear All Records</button>
+    <button class="btn-destructive" onclick="clearDTRForm()" data-i18n="clear_dtr_form">Clear DTR Form</button>
+    <input type="file" id="jsonImportInput" accept=".json,application/json" style="display:none;" onchange="handleJsonImportFile(event)">
+    <button type="button" onclick="document.getElementById('jsonImportInput').click()" data-i18n="import_record_json">Import Record (.json)</button>
   </div>
 
   <!-- Session Summary Preview -->
@@ -171,55 +178,55 @@
 
 
   <div class="card">
-    <h2>Reflection Viewer</h2>
-    <p class="subtitle">All saved reflections for quick review & export</p>
+    <h2 data-i18n="reflection_viewer">Reflection Viewer</h2>
+    <p class="subtitle" data-i18n="reflection_viewer_subtitle">All saved reflections for quick review & export</p>
     
     <div class="sort-controls">
-      <label for="sortSelect">Sort by:</label>
+      <label for="sortSelect" data-i18n="sort_by">Sort by</label>
       <select id="sortSelect" onchange="changeSortMode(this.value)">
-        <option value="date-asc">Date (Oldest First)</option>
-        <option value="date-desc">Date (Newest First)</option>
-        <option value="delta-desc">Performance (Best Delta)</option>
-        <option value="delta-asc">Performance (Worst Delta)</option>
+        <option value="date-asc" data-i18n="sort_date_asc">Date (Oldest First)</option>
+        <option value="date-desc" data-i18n="sort_date_desc">Date (Newest First)</option>
+        <option value="delta-desc" data-i18n="sort_delta_desc">Performance (Best Delta)</option>
+        <option value="delta-asc" data-i18n="sort_delta_asc">Performance (Worst Delta)</option>
       </select>
-      <label for="reflectionViewMode" style="margin-left:10px;">View:</label>
+      <label for="reflectionViewMode" style="margin-left:10px;" data-i18n="view">View</label>
       <select id="reflectionViewMode" onchange="changeReflectionViewMode(this.value)">
-        <option value="all">All Entries</option>
-        <option value="week">By Week</option>
+        <option value="all" data-i18n="all_entries">All Entries</option>
+        <option value="week" data-i18n="by_week">By Week</option>
       </select>
-      <label for="reflectionWeekSelect" style="margin-left:10px;">Week:</label>
+      <label for="reflectionWeekSelect" style="margin-left:10px;" data-i18n="week">Week</label>
       <select id="reflectionWeekSelect" onchange="loadReflectionViewer()">
-        <option value="current">Current Week</option>
+        <option value="current" data-i18n="current_week">Current Week</option>
       </select>
     </div>
 
     <div id="reflectionViewer" class="viewer-box">
-      <p class="empty">No reflections saved yet.</p>
+      <p class="empty" data-i18n="no_reflections_saved">No reflections saved yet.</p>
     </div>
   </div>
 
   <div class="card" style="position: relative;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-      <h2 style="margin: 0;">Daily Performance Graph</h2>
-      <button class="telemetry-btn" onclick="window.location.href='telemetry.html'">Telemetry View</button>
+      <h2 style="margin: 0;" data-i18n="daily_performance_graph">Daily Performance Graph</h2>
+      <button class="telemetry-btn" onclick="window.location.href='telemetry.html#daily'" data-i18n="telemetry_view">Telemetry View</button>
     </div>
     
     <div class="graph-wrapper">
       <div id="monthLabels" class="months-labels"></div>
       <div class="graph-body">
         <div class="days-labels">
-          <span>&nbsp;</span><span>Mo</span><span>&nbsp;</span><span>We</span><span>&nbsp;</span><span>Fr</span><span>&nbsp;</span>
+          <span>&nbsp;</span><span data-i18n="day_mon_short">Mo</span><span>&nbsp;</span><span data-i18n="day_wed_short">We</span><span>&nbsp;</span><span data-i18n="day_fri_short">Fr</span><span>&nbsp;</span>
         </div>
         <div id="githubGraph" class="graph-container"></div>
       </div>
       <div class="graph-legend">
         <div class="legend-levels">
-          <span>Less</span>
+          <span data-i18n="less">Less</span>
           <div class="day-cell cell-empty"></div>
           <div class="day-cell cell-low"></div>
           <div class="day-cell cell-mid"></div>
           <div class="day-cell cell-high"></div>
-          <span>More</span>
+          <span data-i18n="more">More</span>
         </div>
       </div>
     </div>
@@ -228,8 +235,8 @@
   <!-- WEEKLY PERFORMANCE CARD -->
   <div class="card" style="position: relative;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-      <h2 style="margin: 0;">Weekly Summary Graph</h2>
-      <button class="telemetry-btn" onclick="window.location.href='telemetry.html'">Telemetry View</button>
+      <h2 style="margin: 0;" data-i18n="weekly_summary_graph">Weekly Summary Graph</h2>
+      <button class="telemetry-btn" onclick="window.location.href='telemetry.html#weekly'" data-i18n="telemetry_view">Telemetry View</button>
     </div>
     <div class="graph-wrapper">
       <div id="weeklyGraph" class="weekly-graph-container"></div>
@@ -238,29 +245,31 @@
 
   <!-- DTR Exports -->
   <div class="card export-card">
-    <h2>DTR Exports</h2>
+    <h2 data-i18n="dtr_exports">DTR Exports</h2>
     <div class="export-actions">
-      <button onclick="exportPDF()">Export All</button>
-      <button onclick="exportDOCX()">Export .docx</button>
+      <button onclick="exportPDF()" data-i18n="export_all_pdf">Export All .pdf</button>
+      <button onclick="exportDOCX()" data-i18n="export_all_docx">Export All .docx</button>
+      <button type="button" onclick="exportRecordsJSON()" data-i18n="export_json">Export .json</button>
       <span class="export-divider">|</span>
-      <label for="exportWeekSelect" class="export-label">Week</label>
-      <select id="exportWeekSelect" onchange="updateExportWeekRangeLabel()" title="Choose a week to export">
-          <option value="all">All Weeks</option>
+      <label for="exportWeekSelect" class="export-label" data-i18n="week">Week</label>
+      <select id="exportWeekSelect" onchange="updateExportWeekRangeLabel()" title="Choose a week to export" data-i18n-title="choose_week_export">
+          <option value="all" data-i18n="all_weeks">All Weeks</option>
         </select>
       <span id="exportWeekRangeLabel" class="export-week-range" aria-live="polite"></span>
-      <button onclick="exportWeeklyPDF()">Export Week</button>
+      <button onclick="exportWeeklyPDF()" data-i18n="export_week_pdf">Export Week .pdf</button>
+      <button onclick="exportWeeklyDOCX()" data-i18n="export_week_docx">Export Week .docx</button>
     </div>
   </div>
 
   <!-- Storage Capacity Visualizer -->
   <div class="card storage-card">
-    <h2>Storage Capacity</h2>
+    <h2 data-i18n="storage_capacity">Storage Capacity</h2>
     <div id="storageVisualizer" class="storage-visualizer">
       <div class="storage-info">
         <span id="storageUsedText">0.00 MB</span>
         <span class="storage-sep">/</span>
         <span id="storageLimitText">5 MB</span>
-        <span class="storage-label"> (records)</span>
+        <span class="storage-label" data-i18n="storage_records_label"> (records)</span>
       </div>
       <div class="storage-bar-host">
         <div class="storage-bar-wrap">
@@ -268,13 +277,13 @@
         </div>
         <span id="storageBarTip" class="storage-hover-tip" aria-hidden="true"></span>
       </div>
-      <p id="storageStatus" class="storage-status">Calculatingâ€¦</p>
+      <p id="storageStatus" class="storage-status" data-i18n="calculating">Calculating</p>
       <div id="storageIdbSection" class="storage-idb-section" style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);">
         <div class="storage-info" style="font-size:0.9em;">
           <span id="storageIdbUsedText">0.00 MB</span>
           <span class="storage-sep">/</span>
-          <span id="storageIdbQuotaText">â€” MB</span>
-          <span class="storage-label"> Images (IndexedDB)</span>
+          <span id="storageIdbQuotaText">— MB</span>
+          <span class="storage-label" data-i18n="storage_images_idb"> Images (IndexedDB)</span>
         </div>
         <div class="storage-bar-host" style="margin-top:4px;">
           <div class="storage-bar-wrap">
@@ -282,129 +291,165 @@
           </div>
           <span id="storageIdbBarTip" class="storage-hover-tip" aria-hidden="true"></span>
         </div>
-        <p id="storageIdbStatus" class="storage-status" style="font-size:0.85em; margin-top:4px;">Calculating...</p>
+        <p id="storageIdbStatus" class="storage-status" style="font-size:0.85em; margin-top:4px;" data-i18n="calculating_ellipsis">Calculating...</p>
       </div>
       <div class="storage-actions" style="margin-top:10px; display:grid; gap:8px;">
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <label for="storageTargetSelect" style="margin:0; min-width:92px;">Target Images</label>
-          <select id="storageTargetSelect" style="flex:1; min-width:220px;" title="Select a single record for storage actions"></select>
+          <label for="storageTargetSelect" style="margin:0; min-width:92px;" data-i18n="target_images">Target Images</label>
+          <select id="storageTargetSelect" style="flex:1; min-width:220px;" title="Select a single record for storage actions" data-i18n-title="storage_target_select_title"></select>
         </div>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <label style="display:flex; gap:6px; align-items:center; margin:0;">
             <input type="checkbox" id="storageBatchMode" onchange="toggleStorageBatchMode()">
-            Batch processing
+            <span data-i18n="batch_processing">Batch processing</span>
           </label>
-          <small style="opacity:0.75;">Enable to select multiple records below.</small>
+          <small style="opacity:0.75;" data-i18n="batch_processing_help">Enable to select multiple records below.</small>
         </div>
         <div id="storageBatchWrap" style="display:none;">
-          <select id="storageBatchSelect" multiple size="6" style="width:100%; min-height:120px;" title="Select multiple records for batch storage actions"></select>
+          <select id="storageBatchSelect" multiple size="6" style="width:100%; min-height:120px;" title="Select multiple records for batch storage actions" data-i18n-title="storage_batch_select_title"></select>
         </div>
       </div>
       <div class="storage-actions">
-        <button type="button" class="storage-action-btn" onclick="transferLegacyPhotos(this)" title="Transfer localStorage image records to IndexedDB">
-          Transfer localStorage Images
+        <button type="button" class="storage-action-btn" onclick="transferRecordsToIndexedDB(this)" title="Copy current localStorage DTR records to IndexedDB record store" data-i18n-title="storage_copy_ls_to_idb_title">
+          <span data-i18n="records_local_to_idb">Records: localStorage to IndexedDB</span>
         </button>
-        <button type="button" class="storage-action-btn storage-action-btn--accent" onclick="optimizeStorage()" title="Retroactively compress all images to free up space">
-          Optimize DB
+        <button type="button" class="storage-action-btn" onclick="transferRecordsToLocalStorage(this)" title="Copy IndexedDB DTR records to localStorage backup" data-i18n-title="storage_copy_idb_to_ls_title">
+          <span data-i18n="records_idb_to_local">Records: IndexedDB to localStorage</span>
         </button>
-        <button type="button" class="storage-action-btn" onclick="restoreOptimizedImages(this)" title="Restore optimized images to original quality from IndexedDB backups">
-          Restore Originals
+        <button type="button" class="storage-action-btn" onclick="clearDuplicateIndexedDbRecords(this)" title="Remove duplicate IndexedDB records by date (keeps latest entry)" data-i18n-title="storage_remove_idb_dupes_title">
+          <span data-i18n="remove_idb_duplicates">Remove IDB Duplicates</span>
+        </button>
+        <button type="button" class="storage-action-btn storage-action-btn--accent" onclick="optimizeStorage()" title="Retroactively compress all images to free up space" data-i18n-title="storage_optimize_db_title">
+          <span data-i18n="optimize_db">Optimize DB</span>
+        </button>
+        <button type="button" class="storage-action-btn" onclick="restoreOptimizedImages(this)" title="Restore optimized images to original quality from IndexedDB backups" data-i18n-title="storage_restore_originals_title">
+          <span data-i18n="restore_originals">Restore Originals</span>
+        </button>
+        <button type="button" class="btn-destructive" style="width:100%; margin-top:10px; padding: 10px; font-weight: bold; border-radius: 6px;" onclick="hardClearAllData()">
+          <span data-i18n="clear_all_data">Clear All Data</span>
         </button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="jsonImportPreviewModal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:560px;">
+    <h3 style="margin-top:0; border-bottom:2px solid var(--accent); padding-bottom:10px;" data-i18n="import_record_preview">Import Record Preview</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; font-size:0.95em;">
+      <p style="margin:0;"><strong data-i18n="dtr_date">DTR Date</strong>: <span id="jsonPreviewDate">-</span></p>
+      <p style="margin:0;"><strong data-i18n="hours_worked">Hours Worked</strong>: <span id="jsonPreviewHours">-</span></p>
+      <p style="margin:0;"><strong data-i18n="accomplishments_per_line">Accomplishments (one per line)</strong>: <span id="jsonPreviewAccomplishments">-</span></p>
+      <p style="margin:0;"><strong data-i18n="tools_used">Tools Used (comma separated)</strong>: <span id="jsonPreviewTools">-</span></p>
+      <p style="margin:0;"><strong data-i18n="personal_project_hours">Personal Project Hours</strong>: <span id="jsonPreviewPersonal">-</span></p>
+      <p style="margin:0;"><strong data-i18n="sleep_hours">Sleep (Hours)</strong>: <span id="jsonPreviewSleep">-</span></p>
+      <p style="margin:0;"><strong data-i18n="recovery_hours">Recovery Hours</strong>: <span id="jsonPreviewRecovery">-</span></p>
+      <p style="margin:0;"><strong data-i18n="identity_alignment">Identity Alignment (1-5)</strong>: <span id="jsonPreviewIdentity">-</span></p>
+      <p style="margin:0;"><strong data-i18n="images_included">Images Included</strong>: <span id="jsonPreviewImagesCount">0</span></p>
+    </div>
+    <div style="margin-top:10px;">
+      <p style="margin:0 0 5px 0;"><strong data-i18n="daily_reflection">Daily Reflection</strong>:</p>
+      <div id="jsonPreviewReflection" style="max-height:140px; overflow:auto; padding:8px; border:1px solid var(--border); border-radius:6px; background:var(--bg);"></div>
+    </div>
+    <p id="jsonPreviewMeta" style="opacity:0.75; font-size:0.85em; margin:10px 0 0 0;"></p>
+    <div class="modal-actions" style="border-top:1px solid var(--border); padding-top:15px;">
+      <button type="button" onclick="closeJsonImportPreviewModal()" style="background: transparent; color: var(--text); border: 1px solid var(--border);" data-i18n="cancel">Cancel</button>
+      <button type="button" id="confirmBulkImportBtn" onclick="bulkImportAllRecords()" style="display:none; background:var(--accent); color:#fff; margin-right:8px;" data-i18n="bulk_import_all_records">Bulk Import All Records</button>
+      <button type="button" onclick="confirmJsonImportToForm()" data-i18n="preview_to_form">Preview to Form</button>
     </div>
   </div>
 </div>
 
 <div id="ojtConfirmModal" class="modal" style="display:none;">
   <div class="modal-content" style="max-width: 520px;">
-    <h3 style="margin-top:0; border-bottom:2px solid var(--accent); padding-bottom:10px;">Confirm OJT Timeline Settings</h3>
-    <p style="margin:10px 0 6px 0;"><strong>Starting Date:</strong> <span id="ojtConfirmStartDate">-</span></p>
-    <p style="margin:0 0 8px 0;"><strong>Required OJT Hours:</strong> <span id="ojtConfirmRequiredHours">-</span></p>
-    <p style="margin:0 0 8px 0;"><strong>Semester End Date:</strong> <span id="ojtConfirmSemesterEndDate">-</span></p>
-    <p style="margin:0 0 8px 0;"><strong>Timezone:</strong> <span id="ojtConfirmTimeZone">-</span></p>
-    <p style="opacity:0.75; font-size:0.9em;">Applying this will refresh week mapping, graphs, and forecast calculations.</p>
+    <h3 style="margin-top:0; border-bottom:2px solid var(--accent); padding-bottom:10px;" data-i18n="confirm_ojt_timeline_settings">Confirm OJT Timeline Settings</h3>
+    <p style="margin:10px 0 6px 0;"><strong data-i18n="starting_date">Starting Date</strong>: <span id="ojtConfirmStartDate">-</span></p>
+    <p style="margin:0 0 8px 0;"><strong data-i18n="required_ojt_hours">Required OJT Hours</strong>: <span id="ojtConfirmRequiredHours">-</span></p>
+    <p style="margin:0 0 8px 0;"><strong data-i18n="semester_end_date">Semester End Date</strong>: <span id="ojtConfirmSemesterEndDate">-</span></p>
+    <p style="margin:0 0 8px 0;"><strong data-i18n="timezone">Timezone</strong>: <span id="ojtConfirmTimeZone">-</span></p>
+    <p style="opacity:0.75; font-size:0.9em;" data-i18n="ojt_apply_help">Applying this will refresh week mapping, graphs, and forecast calculations.</p>
     <div class="modal-actions" style="border-top:1px solid var(--border); padding-top:15px;">
-      <button type="button" onclick="closeOjtConfirmModal()" style="background: transparent; color: var(--text); border: 1px solid var(--border);">Cancel</button>
-      <button type="button" onclick="confirmSaveOjtTimelineSettings()">Confirm</button>
+      <button type="button" onclick="closeOjtConfirmModal()" style="background: transparent; color: var(--text); border: 1px solid var(--border);" data-i18n="cancel">Cancel</button>
+      <button type="button" onclick="confirmSaveOjtTimelineSettings()" data-i18n="confirm">Confirm</button>
     </div>
   </div>
 </div>
 
 <div id="editModal" class="modal">
   <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
-    <h3 style="margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid var(--accent);">Edit DTR Record</h3>
+    <h3 style="margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid var(--accent);" data-i18n="edit_dtr_record">Edit DTR Record</h3>
 
     <div class="edit-row-top" style="margin-bottom: 15px;">
       <div class="step">
-        <label>Date</label>
+        <label data-i18n="dtr_date">DTR Date</label>
         <input type="date" id="editDate">
       </div>
       <div class="step">
-        <label>Hours Worked</label>
+        <label data-i18n="hours_worked">Hours Worked</label>
         <input type="number" id="editHours" step="0.1" min="0">
       </div>
     </div>
 
     <div class="step">
-      <label>Daily Reflection</label>
-      <textarea id="editReflection" class="edit-reflection" rows="4" placeholder="What did you learn today?"></textarea>
+      <label data-i18n="daily_reflection">Daily Reflection</label>
+      <textarea id="editReflection" class="edit-reflection" rows="4" placeholder="What did you learn today?" data-i18n-placeholder="placeholder_reflection"></textarea>
     </div>
 
     <div class="step">
-      <label>Accomplishments (one per line)</label>
-      <textarea id="editAccomplishments" class="edit-accomplishments" rows="5" placeholder="Task A&#10;Task B"></textarea>
+      <label data-i18n="accomplishments_per_line">Accomplishments (one per line)</label>
+      <textarea id="editAccomplishments" class="edit-accomplishments" rows="5" placeholder="Task A&#10;Task B" data-i18n-placeholder="placeholder_edit_accomplishments"></textarea>
     </div>
 
     <div class="step">
-      <label>Tools Used (comma separated)</label>
-      <input type="text" id="editTools" class="edit-tools" placeholder="VS Code, Chrome">
+      <label data-i18n="tools_used">Tools Used (comma separated)</label>
+      <input type="text" id="editTools" class="edit-tools" placeholder="VS Code, Chrome" data-i18n-placeholder="placeholder_edit_tools">
     </div>
     
     <div class="step">
-      <label>Replace Images (optional)</label>
+      <label data-i18n="replace_images_optional">Replace Images (optional)</label>
       <input type="file" id="editImages" multiple accept="image/*" class="edit-images-input">
-      <small style="opacity: 0.6; font-size: 10px; color: var(--text);">Selecting new files will replace all existing images for this record.</small>
+      <small style="opacity: 0.6; font-size: 10px; color: var(--text);" data-i18n="replace_images_help">Selecting new files will replace all existing images for this record.</small>
       <div id="editImagePreview" style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;"></div>
     </div>
 
-    <h4 style="color: var(--accent); font-size: 13px; text-transform: uppercase; margin: 15px 0 10px 0; letter-spacing: 1px;">Level 2 Telemetry</h4>
+    <h4 style="color: var(--accent); font-size: 13px; text-transform: uppercase; margin: 15px 0 10px 0; letter-spacing: 1px;" data-i18n="level2_telemetry">Level 2 Telemetry (Advanced)</h4>
     <div class="edit-telemetry-grid" style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,30,0,0.2);">
       <div class="step">
-        <label>Personal Hours</label>
+        <label data-i18n="personal_project_hours">Personal Project Hours</label>
         <input type="number" id="editPersonalHours" step="0.5" min="0">
       </div>
       <div class="step">
-        <label>Sleep (Hours)</label>
+        <label data-i18n="sleep_hours">Sleep (Hours)</label>
         <input type="number" id="editSleepHours" step="0.5" min="0">
       </div>
       <div class="step">
-        <label>Recovery Hours</label>
+        <label data-i18n="recovery_hours">Recovery Hours</label>
         <input type="number" id="editRecoveryHours" step="0.5" min="0">
       </div>
       <div class="step">
-        <label>Identity Alignment</label>
+        <label data-i18n="identity_alignment">Identity Alignment (1-5)</label>
         <select id="editIdentityScore">
-          <option value="0">Not Set</option>
-          <option value="1">1 - Drifting</option>
-          <option value="2">2 - Re-centering</option>
-          <option value="3">3 - Aligned</option>
-          <option value="4">4 - Compounding</option>
-          <option value="5">5 - Mission Locked</option>
+          <option value="0" data-i18n="identity_0">Not Set</option>
+          <option value="1" data-i18n="identity_1">1 - Drifting</option>
+          <option value="2" data-i18n="identity_2">2 - Re-centering</option>
+          <option value="3" data-i18n="identity_3">3 - Aligned</option>
+          <option value="4" data-i18n="identity_4">4 - Compounding</option>
+          <option value="5" data-i18n="identity_5">5 - Mission Locked</option>
         </select>
       </div>
       <div class="step">
-        <label>Total Commute (min)</label>
+        <label data-i18n="total_commute_min">Total Commute (min)</label>
         <input type="number" id="editCommuteTotal" min="0">
       </div>
       <div class="step">
-        <label>Productive Commute (min)</label>
+        <label data-i18n="productive_commute_min">Productive Commute (min)</label>
         <input type="number" id="editCommuteProductive" min="0">
       </div>
     </div>
 
     <div class="modal-actions" style="border-top: 1px solid var(--border); padding-top: 15px;">
-      <button onclick="closeEditModal()" style="background: transparent; color: var(--text); border: 1px solid var(--border);">Cancel</button>
-      <button type="button" onclick="saveEditModal()">Save Changes</button>
+      <button onclick="closeEditModal()" style="background: transparent; color: var(--text); border: 1px solid var(--border);" data-i18n="cancel">Cancel</button>
+      <button type="button" onclick="saveEditModal()" data-i18n="save_changes">Save Changes</button>
     </div>
   </div>
 </div>
@@ -413,13 +458,32 @@
 <div id="pdfPreviewModal" class="modal" style="display:none;">
   <div class="modal-content pdf-preview-modal-content">
     <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:2px solid var(--accent); margin-bottom:12px;">
-      <h3 id="pdfPreviewTitle" style="margin:0; font-family:var(--font-heading); color:var(--accent); text-transform:uppercase; letter-spacing:1px; font-size:1rem;">PDF Preview</h3>
-      <button onclick="closePdfPreview()" style="background:transparent; color:var(--text); border:1px solid var(--border); padding:4px 12px; font-size:12px; border-radius:4px; cursor:pointer;">âœ• Close</button>
+      <h3 id="pdfPreviewTitle" style="margin:0; font-family:var(--font-heading); color:var(--accent); text-transform:uppercase; letter-spacing:1px; font-size:1rem;" data-i18n="pdf_preview">PDF Preview</h3>
+      <button onclick="closePdfPreview()" style="background:transparent; color:var(--text); border:1px solid var(--border); padding:4px 12px; font-size:12px; border-radius:4px; cursor:pointer;" data-i18n="close">Close</button>
     </div>
     <iframe id="pdfPreviewFrame" style="width:100%; height:65vh; border:none; border-radius:6px; background:#fff;"></iframe>
     <div class="modal-actions" style="border-top:1px solid var(--border); padding-top:14px; margin-top:12px;">
-      <button onclick="closePdfPreview()" style="background:transparent; color:var(--text); border:1px solid var(--border);">Cancel</button>
-      <button id="pdfDownloadBtn" onclick="triggerPdfDownload()">â¬‡ Download PDF</button>
+      <button onclick="closePdfPreview()" style="background:transparent; color:var(--text); border:1px solid var(--border);" data-i18n="cancel">Cancel</button>
+      <button id="pdfDownloadBtn" onclick="triggerPdfDownload()" data-i18n="download_pdf">Download PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- JSON Export Preview Modal -->
+<div id="jsonExportPreviewModal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width: 760px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:2px solid var(--accent); margin-bottom:12px;">
+      <h3 style="margin:0; font-family:var(--font-heading); color:var(--accent); text-transform:uppercase; letter-spacing:1px; font-size:1rem;" data-i18n="json_export_preview">JSON Export Preview</h3>
+      <button type="button" onclick="closeJsonExportPreview()" style="background:transparent; color:var(--text); border:1px solid var(--border); padding:4px 12px; font-size:12px; border-radius:4px; cursor:pointer;" data-i18n="close">Close</button>
+    </div>
+    <pre id="jsonExportPreviewText" style="margin:0; max-height:58vh; overflow:auto; padding:10px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:12px; white-space:pre-wrap; word-break:break-word;"></pre>
+    <div class="step" style="margin-top:10px; margin-bottom:0;">
+      <label for="jsonExportFileNameInput" data-i18n="filename">Filename</label>
+      <input id="jsonExportFileNameInput" type="text" placeholder="DTR_Record_Name_YYYY-MM-DD.json" data-i18n-placeholder="placeholder_export_filename">
+    </div>
+    <div class="modal-actions" style="border-top:1px solid var(--border); padding-top:14px; margin-top:12px;">
+      <button type="button" onclick="closeJsonExportPreview()" style="background:transparent; color:var(--text); border:1px solid var(--border);" data-i18n="cancel">Cancel</button>
+      <button type="button" onclick="confirmJsonExportDownload()" data-i18n="download_json">Download JSON</button>
     </div>
   </div>
 </div>
@@ -433,7 +497,7 @@
 
 <!-- Core Logic & Helpers -->
 <script src="scripts/theme-sync.js"></script>
-<script src="scripts/dtr-core.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/dist/index.min.js"></script>
 <script src="scripts/dtr-image-store.js"></script>
 <!-- Logic Modules -->
 <script src="scripts/dtr-storage.js"></script>
@@ -443,11 +507,16 @@
 <script src="scripts/dtr-graphs.js"></script>
 <script src="scripts/dtr-exports.js"></script>
 <!-- Main Controller -->
+<script src="scripts/dtr-i18n.js"></script>
+<script src="scripts/dtr-core.js"></script>
 <script src="scripts/script.js"></script>
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
+      window.DTRI18N.bootstrap();
+    }
+  });
+</script>
 
 </body>
 </html>
-
-
-
-

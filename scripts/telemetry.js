@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TELEMETRY MAIN CONTROLLER
  */
 
@@ -12,8 +12,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await initThemeSwitcher();
     COLORS = getThemeValues();
+    syncTelemetryF1LightToggleLabel();
 
     try {
+        // Wait for i18n to be ready if it's bootstrapping
+        if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
+            await window.DTRI18N.bootstrap();
+        }
+
         allLogs = await fetchTelemetryData();
         populateWeekSelector(allLogs);
         renderTelemetry(allLogs);
@@ -34,6 +40,7 @@ function getThemeValues() {
         excellent: style.getPropertyValue('--level-3').trim() || '#FF00FF',
         good: style.getPropertyValue('--level-2').trim() || '#00FF00',
         warning: style.getPropertyValue('--level-1').trim() || '#FFF000',
+        aux: style.getPropertyValue('--chart-aux').trim() || null,
         text: style.getPropertyValue('--text').trim() || '#ffffff',
         grid: style.getPropertyValue('--chart-grid').trim() || 'rgba(255,255,255,0.05)',
         fill: style.getPropertyValue('--chart-fill').trim() || 'rgba(255,255,255,0.02)',
@@ -54,6 +61,7 @@ function setTelemetryTheme(themeName, options = {}) {
     const opts = { rerender: true, ...options };
     const done = (appliedTheme) => {
         try { if (typeof updateFavicon === "function") updateFavicon(appliedTheme); } catch (_) {}
+        syncTelemetryThemeDropdownSelection(appliedTheme);
         if (!opts.rerender) return;
         setTimeout(() => {
             COLORS = getThemeValues();
@@ -77,20 +85,200 @@ function setTelemetryTheme(themeName, options = {}) {
     done(themeName);
 }
 
+function syncTelemetryThemeDropdownSelection(appliedTheme) {
+    const select = document.getElementById("telemetryThemeSelect");
+    if (!select) return;
+    const baseTheme = String(appliedTheme || "f1").replace("-light", "");
+    select.value = baseTheme;
+}
+
+function syncTelemetryF1LightToggleLabel() {
+    const btn = document.getElementById("telemetryF1LightToggleBtn");
+    if (!btn) return;
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+    const activeTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === "function")
+        ? window.ThemeSync.getLocalTheme()
+        : (localStorage.getItem("user-theme") || "f1");
+    const isF1Family = activeTheme === "f1" || activeTheme === "f1-light";
+    if (!isF1Family) {
+        btn.textContent = t ? t("light_na") : "Light: N/A";
+        btn.setAttribute("aria-pressed", "false");
+        btn.disabled = true;
+        return;
+    }
+    btn.disabled = false;
+    const isLight = activeTheme === "f1-light";
+    btn.textContent = t ? (isLight ? t("light_on") : t("light_off")) : (isLight ? "Light: On" : "Light: Off");
+    btn.setAttribute("aria-pressed", isLight ? "true" : "false");
+}
+
+function toggleTelemetryF1LightMode() {
+    const activeTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === "function")
+        ? window.ThemeSync.getLocalTheme()
+        : (localStorage.getItem("user-theme") || "f1");
+    if (activeTheme !== "f1" && activeTheme !== "f1-light") return;
+    const nextTheme = activeTheme === "f1-light" ? "f1" : "f1-light";
+    setTelemetryTheme(nextTheme);
+}
+
 document.addEventListener("theme:changed", () => {
     setTimeout(() => {
         COLORS = getThemeValues();
         renderTelemetry(Array.isArray(allLogs) ? allLogs : []);
+        syncTelemetryF1LightToggleLabel();
     }, 50);
+});
+
+document.addEventListener("dtr:languageChanged", () => {
+    populateWeekSelector(allLogs);
+    renderTelemetry(Array.isArray(allLogs) ? allLogs : []);
 });
 
 let telemetryOnScreenObserver = null;
 
+function withSequentialLineDelays(animations) {
+    const source = animations && typeof animations === "object" ? animations : {};
+    const addDelay = (cfg) => ({
+        ...(cfg || {}),
+        delay(ctx) {
+            if (!ctx || ctx.type !== "data") return 0;
+            const dsType = (ctx.dataset && ctx.dataset.type) || (ctx.chart && ctx.chart.config && ctx.chart.config.type) || "";
+            const type = String(dsType).toLowerCase();
+            if (type !== "line" && type !== "radar") return 0;
+            const ds = Number.isFinite(ctx.datasetIndex) ? ctx.datasetIndex : 0;
+            const pt = Number.isFinite(ctx.dataIndex) ? ctx.dataIndex : 0;
+            return ds * 240 + pt * 16;
+        }
+    });
+
+    return {
+        ...source,
+        x: addDelay(source.x),
+        y: addDelay(source.y)
+    };
+}
+
 function replayChartAnimationForCanvas(canvas) {
-    if (!canvas || typeof charts !== "object") return;
-    const chartList = Object.values(charts || {});
-    const instance = chartList.find((c) => c && c.canvas === canvas);
+    if (!canvas || typeof charts === 'undefined' || !charts) return;
+    const chartId = canvas.id;
+    let instance = null;
+    for (let k in charts) {
+        if (charts[k] && charts[k].canvas === canvas) {
+            instance = charts[k];
+            break;
+        }
+    }
     if (!instance || typeof instance.reset !== "function" || typeof instance.update !== "function") return;
+
+    const profileByChartId = {
+        trajectoryChart: {
+            animation: { duration: 1350, easing: "easeOutExpo" },
+            animations: {
+                x: { duration: 900, easing: "easeOutCubic", from: 0 },
+                y: { duration: 1350, easing: "easeOutExpo", from: 0 }
+            }
+        },
+        deltaChart: {
+            animation: { duration: 1000, easing: "easeOutCubic" },
+            animations: {
+                x: {
+                    duration: 650,
+                    easing: "easeOutSine",
+                    from: 0
+                },
+                y: {
+                    duration: 1000,
+                    easing: "easeOutCubic",
+                    from: 0
+                }
+            }
+        },
+        hourDistChart: {
+            animation: { duration: 1100, easing: "easeOutBack" },
+            animations: {
+                rotate: {
+                    duration: 1100,
+                    easing: "easeOutBack",
+                    from: -1.5
+                },
+                scale: {
+                    duration: 800,
+                    easing: "easeOutCubic",
+                    from: 0.65
+                }
+            }
+        },
+        dayVelocityRadar: {
+            animation: { duration: 980, easing: "easeOutQuart" },
+            animations: {
+                x: {
+                    duration: 700,
+                    easing: "easeOutQuad",
+                    from: 0
+                },
+                y: {
+                    duration: 980,
+                    easing: "easeOutQuart",
+                    from: 0
+                }
+            }
+        },
+        candlestickChart: {
+            animation: { duration: 980, easing: "easeOutQuart" },
+            animations: {
+                x: {
+                    duration: 600,
+                    easing: "easeOutSine",
+                    from: 0
+                },
+                y: {
+                    duration: 980,
+                    easing: "easeOutQuart",
+                    from: 0
+                }
+            }
+        },
+        identityChart: {
+            animation: { duration: 1150, easing: "easeOutQuart" },
+            animations: {
+                x: {
+                    duration: 800,
+                    easing: "easeOutCubic",
+                    from: 0
+                },
+                y: {
+                    duration: 1150,
+                    easing: "easeOutExpo",
+                    from: 0
+                }
+            }
+        },
+        energyZoneChart: {
+            animation: { duration: 1250, easing: "easeOutBack" },
+            animations: {
+                x: {
+                    duration: 700,
+                    easing: "easeOutCubic",
+                    from: 0
+                },
+                y: {
+                    duration: 1250,
+                    easing: "easeOutBack",
+                    from: 0
+                }
+            }
+        }
+    };
+
+    const profile = profileByChartId[chartId];
+    if (profile && instance.options) {
+        if (profile.animation) instance.options.animation = profile.animation;
+        if (profile.animations) instance.options.animations = profile.animations;
+    }
+    if (instance.options) {
+        instance.options.animations = withSequentialLineDelays(instance.options.animations);
+    }
+
     try {
         instance.reset();
         instance.update();
@@ -128,6 +316,8 @@ function initTelemetryEntranceAnimations() {
         telemetryOnScreenObserver.observe(card);
     });
 }
+
+// --- UI UTILITIES ---
 
 const safeUpdate = (id, value, color = null) => {
     const el = document.getElementById(id);
@@ -171,7 +361,11 @@ function populateWeekSelector(logs) {
     const select = document.getElementById("weekSelect");
     if (!select) return;
     
-    select.innerHTML = '<option value="all">Full OJT Period</option>';
+    const currentVal = select.value;
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+    const allWeeksLabel = t ? t("all_weeks") : "Full OJT Period";
+    
+    select.innerHTML = `<option value="all" data-i18n="all_weeks">${allWeeksLabel}</option>`;
     if (!logs || logs.length === 0) return;
 
     const weeks = [...new Set(logs.map(r => getWeekNumber(r.date)))].sort((a,b) => b-a);
@@ -179,20 +373,48 @@ function populateWeekSelector(logs) {
     weeks.forEach(w => {
         const opt = document.createElement("option");
         opt.value = w;
-        opt.innerText = `Week ${w}`;
+        opt.setAttribute("data-i18n", "week_label");
+        // For simple labels with params, we just set the text here and trust languageChanged to handle it
+        opt.innerText = t ? t("week_label", { week: w }) : `Week ${w}`;
         select.appendChild(opt);
     });
+    
+    if (currentVal) select.value = currentVal;
 }
 
-function updateView() {
+async function updateView() {
     const select = document.getElementById("weekSelect");
     if (!select) return;
     const val = select.value;
-    let filtered = allLogs;
-    if (val !== "all") {
-        filtered = allLogs.filter(r => getWeekNumber(r.date) == val);
+
+    const loader = document.getElementById("loadingOverlay");
+    if (loader) {
+        loader.style.display = "flex";
+        // Ensure the loader is visible for at least some time (UX)
     }
-    renderTelemetry(filtered, val);
+
+    try {
+        // Mock server fetch/data sync
+        allLogs = await fetchTelemetryData();
+        
+        let filtered = allLogs;
+        if (val !== "all") {
+            filtered = allLogs.filter(r => getWeekNumber(r.date) == val);
+        }
+
+        // Re-render charts and stats
+        renderTelemetry(filtered, val);
+
+    } catch (err) {
+        console.error("AJAX Update Failed:", err);
+    } finally {
+        if (loader) {
+            // Slight delay before hiding to show that "work" was done
+            setTimeout(() => {
+                loader.style.display = "none";
+            }, 600);
+        }
+    }
 }
 
 function updateTargetPace(val) {
@@ -226,7 +448,8 @@ function updateTargetPace(val) {
     }
 
     const f = calculateForecastUnified({ logs: allLogs, paceOverride: pace });
-    safeUpdate("completionDateText", `Projected: ${formatGmt8DateLabel(f.projectedDate, { month: "long", day: "numeric", year: "numeric" })}`);
+    const projectedLabelLong = formatGmt8DateLabel(f.projectedDate, { month: "long", day: "numeric", year: "numeric" });
+    safeUpdate("completionDateText", `Projected: ${projectedLabelLong}`);
 
     const paceSufficient = f.remainingHours <= 0 || pace >= f.requiredRate;
     const defEl = document.getElementById("timeDeficitText");
@@ -245,18 +468,23 @@ function updateTargetPace(val) {
 
     const statusMsg = document.getElementById("paceStatusMsg");
     if (statusMsg) {
+        const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
         const projectedLabel = formatGmt8DateLabel(f.projectedDate, { month: "short", day: "numeric" });
         if (f.remainingHours <= 0) {
-            statusMsg.innerText = `"Goal already reached."`;
+            statusMsg.innerText = t ? t('status_goal_already_reached_sim') : `Goal already reached.`;
             statusMsg.style.color = COLORS.excellent;
         } else if (paceSufficient) {
-            statusMsg.innerText = `"At ${pace.toFixed(1)}h/day, you finish by ${projectedLabel}."`;
+            statusMsg.innerText = t ? t('status_sim_pace_finish', { pace: pace.toFixed(1), date: projectedLabel }) : `At ${pace.toFixed(1)}h/day, you finish by ${projectedLabel}.`;
             statusMsg.style.color = COLORS.good;
         } else {
-            statusMsg.innerText = `"${pace.toFixed(1)}h/day is insufficient. Target ${Math.ceil(f.requiredRate)}h+."`;
+            const targetRate = Math.ceil(f.requiredRate);
+            statusMsg.innerText = t ? t('status_sim_pace_insufficient', { pace: pace.toFixed(1), target: targetRate }) : `${pace.toFixed(1)}h/day is insufficient. Target ${targetRate}h+.`;
             statusMsg.style.color = COLORS.accent;
         }
     }
+
+    // Update Health Predictions
+    handleHealthIndicators(allLogs, pace);
 }
 
 function resetPaceSlider() {
@@ -271,8 +499,15 @@ function resetPaceSlider() {
 
 function renderTelemetry(logs, selectedWeek = "all") {
     const today = nowGmt8StartOfDay();
-    Object.values(charts).forEach(c => { if(c && typeof c.destroy === 'function') c.destroy(); });
-    charts = {};
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+    if (typeof charts !== 'undefined' && charts) {
+        for (let k in charts) {
+            if (charts[k] && typeof charts[k].destroy === 'function') {
+                charts[k].destroy();
+            }
+            delete charts[k];
+        }
+    }
 
     if (!logs) logs = [];
 
@@ -285,13 +520,13 @@ function renderTelemetry(logs, selectedWeek = "all") {
         const d = f.currentStatusDelta;
         const absD = Math.abs(d).toFixed(1);
         if (d > 0) {
-            defEl.innerHTML = `Ahead (+${absD}h)`;
+            defEl.innerHTML = t ? t("status_ahead_hours", { hours: absD }) : `Ahead (+${absD}h)`;
             defEl.style.color = COLORS.good;
         } else if (d < 0) {
-            defEl.innerHTML = `Behind (-${absD}h)`;
+            defEl.innerHTML = t ? t("status_behind_hours", { hours: absD }) : `Behind (-${absD}h)`;
             defEl.style.color = COLORS.accent;
         } else {
-            defEl.innerHTML = `On Track`;
+            defEl.innerHTML = t ? t("status_on_track") : `On Track`;
             defEl.style.color = COLORS.text;
         }
     }
@@ -305,12 +540,15 @@ function renderTelemetry(logs, selectedWeek = "all") {
     const statusMsg = document.getElementById("paceStatusMsg");
     if (statusMsg) {
         if (f.remainingHours <= 0) {
-            statusMsg.innerText = "Goal Reached! OJT Complete.";
+            statusMsg.innerText = t ? t('status_goal_reached') : "Goal Reached! OJT Complete.";
             statusMsg.style.color = COLORS.excellent;
         } else {
-            statusMsg.innerText = f.isAhead
-                ? `"On track to finish by ${formatGmt8DateLabel(f.projectedDate, { month: "short", day: "numeric" })}."`
-                : `"Required pace higher than current. Increase hours."`;
+            const projectedLabel = formatGmt8DateLabel(f.projectedDate, { month: "short", day: "numeric" });
+            if (f.isAhead) {
+                statusMsg.innerText = t ? t('status_on_track_to_finish', { date: projectedLabel }) : `On track to finish by ${projectedLabel}.`;
+            } else {
+                statusMsg.innerText = t ? t('status_increase_hours') : `Required pace higher than current. Increase hours.`;
+            }
             statusMsg.style.color = f.isAhead ? COLORS.good : COLORS.accent;
         }
     }
@@ -371,18 +609,82 @@ function renderTelemetry(logs, selectedWeek = "all") {
         renderContextualCharts(logs, selectedWeek);
         renderRadarChart(logs);
         renderHourDistChart(logs);
+        renderWeeklyEffortChart(allLogs);
+        renderWeeklyMatrix(allLogs);
         initTelemetryEntranceAnimations();
     }
 }
 
+function renderWeeklyMatrix(logs) {
+    const tbody = document.getElementById("telemetryWeeklyTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const weeklyData = {};
+    logs.forEach(r => {
+        const w = getWeekNumber(r.date);
+        if (!weeklyData[w]) weeklyData[w] = { ojt: 0, personal: 0, count: 0 };
+        weeklyData[w].ojt += r.hours;
+        weeklyData[w].personal += (r.personalHours || 0);
+        weeklyData[w].count++;
+    });
+
+    const sortedWeeks = Object.keys(weeklyData).map(Number).sort((a,b) => a - b);
+    let prevHours = null;
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+
+    sortedWeeks.forEach(w => {
+        const data = weeklyData[w];
+        let growth = "-";
+        if (prevHours !== null && prevHours > 0) {
+            const diff = ((data.ojt - prevHours) / prevHours) * 100;
+            growth = (diff >= 0 ? "+" : "") + diff.toFixed(1) + "%";
+        }
+        
+        const eff = ((data.ojt / (data.count * 8)) * 100).toFixed(1) + "%";
+        
+        const tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid var(--grid)";
+        tr.innerHTML = `
+            <td style="padding: 8px;">${t ? t("week_label", { week: w }) : ("Week " + w)}</td>
+            <td style="padding: 8px;">${data.ojt.toFixed(1)}h</td>
+            <td style="padding: 8px;">${data.personal.toFixed(1)}h</td>
+            <td style="padding: 8px; color: ${growth.startsWith('+') ? COLORS.good : (growth === '-' ? COLORS.text : COLORS.accent)}">${growth}</td>
+            <td style="padding: 8px;">${eff}</td>
+        `;
+        tbody.appendChild(tr);
+        prevHours = data.ojt;
+    });
+}
+
 // --- CALCULATIONS ---
 
-function handleHealthIndicators(logs) {
+function handleHealthIndicators(logs, paceOverride = null) {
     let fatigueRisk = 0;
     const sorted = [...allLogs].sort((a,b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
     
+    // If paceOverride is provided, simulate a few future days to see impact
+    const simulatedLogs = [...sorted];
+    if (paceOverride !== null) {
+        const pace = parseFloat(paceOverride);
+        const lastDateKey = sorted.length > 0 ? (toGmt8DateKey(sorted[sorted.length - 1].date) || toGmt8DateKey(new Date())) : toGmt8DateKey(new Date());
+        let lastDate = parseDateKeyGmt8(lastDateKey);
+
+        for (let i = 1; i <= 7; i++) {
+            const nextDate = addDaysGmt8(lastDate, i);
+            if (isWorkdayGmt8(nextDate)) {
+                simulatedLogs.push({
+                    hours: pace,
+                    personalHours: pace > 8 ? (pace - 8) * 0.5 : 0,
+                    sleepHours: Math.max(4, 9 - (pace * 0.3)),
+                    date: nextDate.toISOString()
+                });
+            }
+        }
+    }
+
     let consecutiveHigh = 0;
-    for (const r of sorted) {
+    for (const r of simulatedLogs) {
         if (r.hours > 8) consecutiveHigh++;
         else consecutiveHigh = 0;
         if (consecutiveHigh >= 3) fatigueRisk++; 
@@ -392,45 +694,50 @@ function handleHealthIndicators(logs) {
     if (fatLabel) {
         const fatInd = document.getElementById("fatigueIndicator");
         const fatNote = document.getElementById("fatigueNote");
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        const prefix = (paceOverride !== null && t) ? t('status_predicted_prefix') : (paceOverride !== null ? "Predicted: " : "");
         if (fatigueRisk === 0) {
             if (fatInd) fatInd.innerText = "🟢";
-            fatLabel.innerText = "Stable";
+            fatLabel.innerText = prefix + (t ? t('status_stable') : "Stable");
             fatLabel.style.color = COLORS.good;
-            if (fatNote) fatNote.innerText = "Performance is sustainable";
+            if (fatNote) fatNote.innerText = t ? t('status_sustainable') : "Performance is sustainable";
         } else if (fatigueRisk < 3) {
             if (fatInd) fatInd.innerText = "🟠";
-            fatLabel.innerText = "Accumulating Fatigue";
+            fatLabel.innerText = prefix + (t ? t('status_acc_fatigue') : "Accumulating Fatigue");
             fatLabel.style.color = COLORS.warning;
-            if (fatNote) fatNote.innerText = "High load detected";
+            if (fatNote) fatNote.innerText = t ? t('status_high_load') : "High load detected";
         } else {
             if (fatInd) fatInd.innerText = "🚩";
-            fatLabel.innerText = "Burnout Risk";
+            fatLabel.innerText = prefix + (t ? t('status_burnout_risk') : "Burnout Risk");
             fatLabel.style.color = COLORS.accent;
-            if (fatNote) fatNote.innerText = "CRITICAL: Rest Required";
+            if (fatNote) fatNote.innerText = t ? t('status_rest_required') : "CRITICAL: Rest Required";
         }
     }
 
-    const avgTotalHours = logs.length > 0 ? logs.reduce((s,r) => s + r.hours + (r.personalHours||0), 0) / logs.length : 0;
+    const totalLogsForAvg = simulatedLogs.slice(-14); // Look at recent 14 days (actual + simulated)
+    const avgTotalHours = totalLogsForAvg.length > 0 ? totalLogsForAvg.reduce((s,r) => s + r.hours + (r.personalHours||0), 0) / totalLogsForAvg.length : 0;
     const cogLabel = document.getElementById("cogLabel");
     const cogInd = document.getElementById("cogIndicator");
     const cogNote = document.getElementById("cogNote");
 
     if (cogLabel) {
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        const prefix = (paceOverride !== null && t) ? t('status_predicted_prefix') : (paceOverride !== null ? "Predicted: " : "");
         if (avgTotalHours > 12) {
             cogInd.innerText = "⚠️";
-            cogLabel.innerText = "System Overload";
+            cogLabel.innerText = prefix + (t ? t('status_overload') : "System Overload");
             cogLabel.style.color = COLORS.accent;
-            cogNote.innerText = `Avg Load: ${avgTotalHours.toFixed(1)}h/day`;
+            cogNote.innerText = t ? t('status_avg_load', { hours: avgTotalHours.toFixed(1) }) : `Avg Load: ${avgTotalHours.toFixed(1)}h/day`;
         } else if (avgTotalHours > 9) {
             cogInd.innerText = "⚡";
-            cogLabel.innerText = "High Engagement";
+            cogLabel.innerText = prefix + (t ? t('status_high_engagement') : "High Engagement");
             cogLabel.style.color = COLORS.warning;
-            cogNote.innerText = "Pushing boundaries";
+            cogNote.innerText = t ? t('status_pushing_boundaries') : "Pushing boundaries";
         } else {
             cogInd.innerText = "✅";
-            cogLabel.innerText = "Optimal";
+            cogLabel.innerText = prefix + (t ? t('status_optimal') : "Optimal");
             cogLabel.style.color = COLORS.good;
-            cogNote.innerText = "Steady mental state";
+            cogNote.innerText = t ? t('status_steady_mental') : "Steady mental state";
         }
     }
 }
@@ -464,7 +771,14 @@ function calculateMomentum(today) {
     
     const mStatus = document.getElementById("momentumStatus");
     if (mStatus) {
-        mStatus.innerText = momentum > 5 ? "ACCELERATING" : (momentum < -5 ? "SLOWING" : "STABLE");
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        if (momentum > 5) {
+            mStatus.innerText = t ? t('momentum_accelerating') : "ACCELERATING";
+        } else if (momentum < -5) {
+            mStatus.innerText = t ? t('momentum_slowing') : "SLOWING";
+        } else {
+            mStatus.innerText = t ? t('momentum_stable') : "STABLE";
+        }
         mStatus.style.color = momentum > 5 ? COLORS.good : (momentum < -5 ? COLORS.accent : COLORS.text);
     }
 
@@ -474,5 +788,7 @@ function calculateMomentum(today) {
         if (r.hours >= 8) streak++;
         else break;
     }
-    safeUpdate("streakValue", `${streak} Days`);
+    const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+    const streakUnit = t ? t('unit_days') : "Days";
+    safeUpdate("streakValue", `${streak} ${streakUnit}`);
 }

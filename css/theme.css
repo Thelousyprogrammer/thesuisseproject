@@ -1,5 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap');
 
+@font-face {
+  font-family: 'JetBrains Mono Nerd Font';
+  src: url('../fonts/JetBrainsMonoNerdFont-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* 1. Global Defaults (F1 Style) */
   --level-0: #1a1a1a; 
@@ -24,89 +32,8 @@
   --lcd-border: 1px solid rgba(255, 255, 255, 0.1);
 
   /* global fallback font */
-  --font-body: "JetBrains Mono Nerd Font", monospace;
-  --font-heading: "JetBrains Mono Nerd Font", monospace;
-}
-
-/* --- MCLAREN THEME --- */
-
-[data-theme="mclaren"] {
-    /* Brand palette */
-    --orange: #ef8733;
-    --orange-dark: #d0782f;
-    --orange-light: #ff9c4d;
-
-    --text: #ffffff;
-    --accent: var(--orange);
-    --border: var(--orange-light);
-    --panel: #111; /* dark panel fallback */
-
-    /* Fonts */
-    --font-heading: "Space Grotesk", sans-serif;
-    --font-body: "Space Grotesk", sans-serif;
-
-    /* Telemetry levels/colors */
-    --level-0: #000000;
-    --level-1: var(--orange-dark);
-    --level-2: var(--orange);
-    --level-3: var(--orange-light);
-
-    --color-neutral: #a0a0a0;
-    --color-warning: var(--orange-dark);
-    --color-good: var(--orange);
-    --color-excellent: var(--orange-light);
-
-    /* telemetry chart colors: dark and light shades of McLaren orange */
-    --chart-grid: rgba(239, 135, 51, 0.05);           /* very faint orange on black */
-    --chart-fill: rgba(239, 135, 51, 0.2);            /* medium opacity orange */
-    --chart-ideal: rgba(239, 135, 51, 0.4);           /* lighter/brighter band for ideal line */
-    --chart-highlight: rgba(239, 135, 51, 0.65);      /* richer shade for emphasis */
-    --mclaren-grid-rgb: 239, 135, 51;
-    --mclaren-grid-alpha: 0.26;
-
-    opacity: 1;
-}
-
-[data-theme="mclaren"] body {
-    background-color: var(--bg, #000000) !important;
-    background-image:
-      linear-gradient(
-        0deg,
-        transparent 24%,
-        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 25%,
-        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 26%,
-        transparent 27%,
-        transparent 74%,
-        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 75%,
-        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 76%,
-        transparent 77%,
-        transparent
-      ),
-      linear-gradient(
-        90deg,
-        transparent 24%,
-        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 25%,
-        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 26%,
-        transparent 27%,
-        transparent 74%,
-        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 75%,
-        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 76%,
-        transparent 77%,
-        transparent
-      ) !important;
-    background-size: 55px 55px !important;
-}
-
-/* McLaren button styling */
-.btn-theme-mclaren {
-    background: #ef8733 !important;
-    color: black !important;
-    border: 1px solid #ef8733 !important;
-    font-family: "Space Grotesk", sans-serif !important;
-}
-.btn-theme-mclaren:hover {
-    background: #d0782f !important;
-    box-shadow: 0 0 10px rgba(239, 135, 51, 0.5);
+  --font-body: "JetBrains Mono Nerd Font", "Noto Sans", monospace;
+  --font-heading: "JetBrains Mono Nerd Font", "Noto Sans", monospace;
 }
 
 /* 2. Cadillac Overrides */
@@ -202,10 +129,45 @@
   --chart-ideal: rgba(255, 255, 255, 0.2);
 }
 
+[data-theme="f1-light"] {
+  --bg: #f7f8fc;
+  --text: #171a24;
+  --panel: #ffffff;
+  --accent: #d71800;
+  --border: #e85a48;
+
+  --font-heading: "KH Interference", sans-serif;
+  --font-body: "Formula1 Display", sans-serif;
+
+  --level-0: #d9dde8;
+  --level-1: #c07d00;
+  --level-2: #147a2f;
+  --level-3: #a23be3;
+
+  --color-neutral: #5d6475;
+  --color-warning: var(--level-1);
+  --color-good: var(--level-2);
+  --color-excellent: var(--level-3);
+
+  --chart-grid: rgba(23, 26, 36, 0.1);
+  --chart-fill: rgba(215, 24, 0, 0.15);
+  --chart-ideal: rgba(23, 26, 36, 0.2);
+}
+
+[data-theme="f1-light"] body {
+    background: linear-gradient(180deg, #fbfcff 0%, #eef2fa 100%);
+}
+
+[data-theme="f1-light"] .btn-destructive {
+    background: #d71800;
+    border: none;
+}
+
 [data-theme="f1"] .btn-destructive {
     background: #ff1e00; /* F1 Red */
     border: none;
 }
+
 
 /* ==========================================
    2. CADILLAC V-SERIES (Gold/Luxury)
@@ -491,7 +453,7 @@
 @font-face {
   font-family: "Harrington Local";
   src: local("Harrington"),
-       url("file:///C:/Windows/Fonts/Harrington.ttf") format("truetype");
+       url("../fonts/Harrington.ttf") format("truetype");
   font-display: swap;
 }
 
@@ -751,6 +713,7 @@
     font-family: "KH Interference", sans-serif !important;
     text-transform: uppercase;
     letter-spacing: 1px;
+    font-weight: 700 !important;
 }
 
 .btn-theme-f1:hover {
@@ -778,6 +741,7 @@
     color: #cbb145 !important;
     font-family: "UAV OSD Sans", monospace !important;
     text-transform: uppercase !important;
+    font-weight: 700 !important;
 }
 
 .btn-theme-apx:hover {
@@ -792,6 +756,7 @@
     border: 1px solid #d5ce8c !important;
     font-family: "Harrington Local", "Harrington", "Georgia", serif !important;
     letter-spacing: 0.3px;
+    font-weight: 700 !important;
 }
 
 .btn-theme-kiki:hover {
@@ -804,7 +769,6 @@
     border: 1px solid #e85f66 !important;
     font-family: "Ferro Rosso", "Ferrari Sans", sans-serif !important;
     font-weight: 700 !important;
-    text-transform: uppercase !important;
     letter-spacing: 1px;
 }
 
@@ -812,4 +776,267 @@
     background: #e85f66 !important;
     color: #000000 !important;
     box-shadow: 0 0 15px rgba(213, 46, 55, 0.7);
+}
+
+/* ==========================================
+   6. MCLAREN (Orange/Black/White)
+   ========================================== */
+
+[data-theme="mclaren"] {
+    /* Brand palette */
+    --orange: #ef8733;
+    --orange-dark: #d0782f;
+    --orange-light: #ff9c4d;
+
+    --text: #ffffff;
+    --accent: var(--orange);
+    --border: var(--orange-light);
+    --panel: #111; /* dark panel fallback */
+
+    /* Fonts */
+    --font-heading: "Space Grotesk", sans-serif;
+    --font-body: "Space Grotesk", sans-serif;
+
+    /* Telemetry levels/colors */
+    --level-0: #000000;
+    --level-1: var(--orange-dark);
+    --level-2: var(--orange);
+    --level-3: var(--orange-light);
+
+    --color-neutral: #a0a0a0;
+    --color-warning: var(--orange-dark);
+    --color-good: var(--orange);
+    --color-excellent: var(--orange-light);
+
+    /* telemetry chart colors: dark and light shades of McLaren orange */
+    --chart-grid: rgba(239, 135, 51, 0.05);           /* very faint orange on black */
+    --chart-fill: rgba(239, 135, 51, 0.2);            /* medium opacity orange */
+    --chart-ideal: rgba(239, 135, 51, 0.4);           /* lighter/brighter band for ideal line */
+    --chart-highlight: rgba(239, 135, 51, 0.65);      /* richer shade for emphasis */
+    --mclaren-grid-rgb: 239, 135, 51;
+    --mclaren-grid-alpha: 0.26;
+
+    opacity: 1;
+}
+
+[data-theme="mclaren"] body {
+    background-color: var(--bg, #000000) !important;
+    background-image:
+      linear-gradient(
+        0deg,
+        transparent 24%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 25%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 26%,
+        transparent 27%,
+        transparent 74%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 75%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 76%,
+        transparent 77%,
+        transparent
+      ),
+      linear-gradient(
+        90deg,
+        transparent 24%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 25%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 26%,
+        transparent 27%,
+        transparent 74%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 75%,
+        rgba(var(--mclaren-grid-rgb), var(--mclaren-grid-alpha)) 76%,
+        transparent 77%,
+        transparent
+      ) !important;
+    background-size: 55px 55px !important;
+}
+
+/* McLaren button styling */
+.btn-theme-mclaren {
+    background: #ef8733 !important;
+    color: black !important;
+    border: 1px solid #ef8733 !important;
+    font-family: "Space Grotesk", sans-serif !important;
+}
+.btn-theme-mclaren:hover {
+    background: #d0782f !important;
+    box-shadow: 0 0 10px rgba(239, 135, 51, 0.5);
+}
+
+/* ==========================================
+   7. ZUTOMAYO (ZTMY - Technical Violet/Green)
+   ========================================== */
+
+[data-theme="ztmy"] {
+  /* Brand Palette */
+  --ztmy-purple: #8E6EBA;
+  --ztmy-green: #87C07A;
+  --ztmy-black: #000000;
+  --ztmy-white: #FFFFFF;
+  --ztmy-red: #FD1A2E;
+
+  /* Foundation */
+  --bg: var(--ztmy-black);
+  --surface: #0a0a0a;
+  --panel: rgba(0, 0, 0, 0.85);
+  --text: var(--ztmy-green);
+  --text-dim: #a0a0a0;
+  --border: var(--ztmy-purple);
+  --accent: var(--ztmy-purple);
+  --accent-secondary: var(--ztmy-green);
+  --accent-aux: #d8b5a2;
+
+  /* Level Colors */
+  --level-0: #1a1a1a;
+  --level-1: var(--ztmy-red);
+  --level-2: var(--ztmy-green);
+  --level-3: var(--ztmy-purple);
+
+  /* JS Readability Mappings */
+  --color-neutral: #a0a0a0;
+  --color-warning: var(--ztmy-red);
+  --color-good: var(--ztmy-green);
+  --color-excellent: var(--ztmy-purple);
+
+  /* Chart Styles */
+  --chart-grid: rgba(142, 110, 186, 0.1);
+  --chart-fill: rgba(142, 110, 186, 0.15);
+  --chart-ideal: rgba(135, 192, 122, 0.3);
+  --chart-aux: #d8b5a2;
+
+  /* Typography */
+  --font-heading: 'JetBrains Mono Nerd Font', 'Space Grotesk', monospace;
+  --font-body: 'JetBrains Mono Nerd Font', monospace;
+}
+
+[data-theme="ztmy"] body {
+  background-color: var(--ztmy-black) !important;
+  position: relative;
+  isolation: isolate;
+}
+
+[data-theme="ztmy"] body::before {
+  content: "";
+  position: fixed;
+  inset: -50px;
+  z-index: -1;
+  --c: 7px;
+  background-color: var(--ztmy-black);
+  background-image: 
+    radial-gradient(circle at 50% 50%, #0000 1.5px, var(--ztmy-black) 0 var(--c), #0000 var(--c)),
+    radial-gradient(circle at 50% 50%, #0000 1.5px, var(--ztmy-black) 0 var(--c), #0000 var(--c)),
+    radial-gradient(circle at 50% 50%, var(--ztmy-red), rgba(253, 26, 46, 0) 60%),
+    radial-gradient(circle at 50% 50%, var(--accent-aux), rgba(216, 181, 162, 0) 60%),
+    radial-gradient(circle at 50% 50%, var(--ztmy-green), rgba(135, 192, 122, 0) 60%),
+    radial-gradient(ellipse at 50% 50%, var(--ztmy-purple), rgba(142, 110, 186, 0) 60%);
+  background-size:
+    12px 20.7846097px,
+    12px 20.7846097px,
+    200% 200%,
+    200% 200%,
+    200% 200%,
+    200% 20.7846097px;
+  --p: 0px 0px, 6px 10.39230485px;
+  background-position:
+    var(--p),
+    0% 0%,
+    0% 0%,
+    0% 0%,
+    0% 0%,
+    0% 0%;
+  animation:
+    ztmy-wee 40s linear infinite,
+    ztmy-filt 6s linear infinite;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+@keyframes ztmy-filt {
+  0% { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(360deg); }
+}
+
+@keyframes ztmy-wee {
+  0% {
+    background-position:
+      var(--p),
+      800% 400%,
+      1000% -400%,
+      -1200% -600%,
+      400% 41.5692194px;
+  }
+  to {
+    background-position:
+      var(--p),
+      0% 0%,
+      0% 0%,
+      0% 0%,
+      0% 0%;
+  }
+}
+
+[data-theme="ztmy"] .card,
+[data-theme="ztmy"] .stat-card,
+[data-theme="ztmy"] .telemetry-card,
+[data-theme="ztmy"] .chart-container {
+  background: var(--surface) !important;
+  border: 1px solid var(--ztmy-purple) !important;
+  box-shadow: 0 0 15px rgba(142, 110, 186, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="ztmy"] .card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  background: var(--ztmy-purple);
+}
+
+[data-theme="ztmy"] h1,
+[data-theme="ztmy"] h2,
+[data-theme="ztmy"] h3 {
+  font-family: var(--font-heading) !important;
+  color: var(--ztmy-purple);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+[data-theme="ztmy"] button:not([class*="btn-theme-"]) {
+  background: transparent;
+  border: 1px solid var(--ztmy-purple);
+  color: var(--ztmy-purple);
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+[data-theme="ztmy"] button:not([class*="btn-theme-"]):hover {
+  background: var(--ztmy-purple);
+  color: var(--ztmy-black);
+  box-shadow: 0 0 20px rgba(142, 110, 186, 0.4);
+}
+
+[data-theme="ztmy"] .btn-destructive {
+  border-color: var(--ztmy-red) !important;
+  color: var(--ztmy-red) !important;
+}
+
+[data-theme="ztmy"] .btn-destructive:hover {
+  background: var(--ztmy-red) !important;
+  color: var(--ztmy-white) !important;
+  box-shadow: 0 0 20px rgba(253, 26, 46, 0.4) !important;
+}
+
+/* ZTMY Button specifically */
+.btn-theme-ztmy {
+  background: var(--ztmy-purple, #8E6EBA) !important;
+  color: #000 !important;
+  border: 1px solid #8E6EBA !important;
+  font-family: 'JetBrains Mono Nerd Font', monospace !important;
+  font-weight: 700 !important;
+}
+
+.btn-theme-ztmy:hover {
+  background: #a388cc !important;
+  box-shadow: 0 0 12px rgba(142, 110, 186, 0.6);
 }

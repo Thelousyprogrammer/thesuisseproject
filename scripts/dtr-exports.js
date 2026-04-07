@@ -14,14 +14,15 @@ function updateExportWeekOptions() {
     if (!select) return;
 
     const currentValue = select.value;
-    select.innerHTML = '<option value="all">All Weeks</option>';
+    const allWeeksLabel = window.DTRI18N ? window.DTRI18N.t("all_weeks") : "All Weeks";
+    select.innerHTML = `<option value="all">${allWeeksLabel}</option>`;
     const weeks = [...new Set(dailyRecords.map(r => getWeekNumber(new Date(r.date))))].sort((a, b) => b - a);
 
     weeks.forEach(w => {
         const range = getWeekDateRange(w);
         const opt = document.createElement("option");
         opt.value = w;
-        opt.textContent = `Week ${w}`;
+        opt.textContent = window.DTRI18N ? window.DTRI18N.t("week_label", { week: w }) : `Week ${w}`;
         opt.title = `${range.start} – ${range.end}`;
         select.appendChild(opt);
     });
@@ -200,7 +201,9 @@ function exportWeeklyPDF() {
     let y = 15;
 
     const filterWeek = document.getElementById("exportWeekSelect").value;
-    const weekLabel  = filterWeek === "all" ? "All Weeks" : `Week ${filterWeek}`;
+    const allWeeksLabel = window.DTRI18N ? window.DTRI18N.t("all_weeks") : "All Weeks";
+    const weekLabelText = window.DTRI18N ? window.DTRI18N.t("week_label", { week: filterWeek }) : `Week ${filterWeek}`;
+    const weekLabel  = filterWeek === "all" ? allWeeksLabel : weekLabelText;
 
     // ── Report Title (Red)
     doc.setFontSize(18);
@@ -395,4 +398,450 @@ function exportDOCX() {
             console.error("DOCX export failed:", err);
             alert("DOCX export failed. Check console for details.");
         });
+}
+
+function exportWeeklyDOCX() {
+    if (!dailyRecords.length) return alert("No records to export.");
+    if (!window.docx || !window.saveAs) {
+        alert("DOCX export dependencies are not loaded.");
+        return;
+    }
+
+    const {
+        Document,
+        Packer,
+        Paragraph,
+        TextRun,
+        HeadingLevel,
+        AlignmentType
+    } = window.docx;
+
+    const weekSelect = document.getElementById("exportWeekSelect");
+    const filterWeek = weekSelect ? weekSelect.value : "all";
+    const allWeeksLabel = window.DTRI18N ? window.DTRI18N.t("all_weeks") : "All Weeks";
+    const weekLabelText = window.DTRI18N ? window.DTRI18N.t("week_label", { week: filterWeek }) : `Week ${filterWeek}`;
+    const weekLabel = filterWeek === "all" ? allWeeksLabel : weekLabelText;
+    const weeks = getWeeklyDTR(filterWeek);
+    if (!weeks.length) {
+        alert("No weekly records found for the selected filter.");
+        return;
+    }
+
+    const children = [
+        new Paragraph({
+            heading: HeadingLevel.TITLE,
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun("Weekly DTR Report")]
+        }),
+        new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun(`Filter: ${weekLabel}  |  Generated: ${new Date().toLocaleDateString()}`)]
+        }),
+        new Paragraph({ text: "" })
+    ];
+
+    weeks.forEach((w) => {
+        const weekRange = getWeekDateRange(w.week);
+        children.push(
+            new Paragraph({
+                heading: HeadingLevel.HEADING_2,
+                children: [new TextRun(`Week ${w.week} Summary`)]
+            }),
+            new Paragraph({
+                children: [new TextRun(`${weekRange.start} - ${weekRange.end}`)]
+            }),
+            new Paragraph({
+                children: [new TextRun(`Total OJT Hours: ${w.totalHours.toFixed(1)}h`)]
+            }),
+            new Paragraph({
+                children: [new TextRun(`L2: Personal ${w.personalHours.toFixed(1)}h | Sleep ${w.sleepHours.toFixed(1)}h | Recovery ${w.recoveryHours.toFixed(1)}h`)]
+            })
+        );
+
+        if (w.tools.length) {
+            children.push(
+                new Paragraph({
+                    children: [new TextRun(`Tools Used: ${w.tools.join(", ")}`)]
+                })
+            );
+        }
+
+        if (w.accomplishments.length) {
+            children.push(new Paragraph({ children: [new TextRun("Accomplishments:")] }));
+            w.accomplishments.forEach((a) => {
+                const text = `[${a.date}] ${a.text || ""}`.trim();
+                children.push(new Paragraph({ text, bullet: { level: 0 } }));
+            });
+        }
+
+        children.push(new Paragraph({ text: "" }));
+    });
+
+    const doc = new Document({
+        sections: [{ properties: {}, children }]
+    });
+
+    const safeWeek = filterWeek === "all" ? "All_Weeks" : `Week_${filterWeek}`;
+    Packer.toBlob(doc)
+        .then((blob) => {
+            saveAs(blob, getTodayFileName(`Weekly_DTR_Report_${safeWeek}`, "docx"));
+        })
+        .catch((err) => {
+            console.error("Weekly DOCX export failed:", err);
+            alert("Weekly DOCX export failed. Check console for details.");
+        });
+}
+
+let _pendingImportedRecord = null;
+let _pendingImportedAllRecords = [];
+let _pendingImportMeta = "";
+let _pendingJsonExportBlob = null;
+let _pendingJsonExportFileName = "";
+
+function getRecordTimelineData(dateLike) {
+    const weekNumber = getWeekNumber(dateLike);
+    const dayNumber = getDayNumberInOjtWeek(dateLike);
+    return {
+        weekNumber,
+        dayNumber,
+        label: `Week: ${weekNumber} | Day: ${dayNumber}`
+    };
+}
+
+async function normalizeRecordForJson(record, includeImages = false) {
+    const safe = record || {};
+    const dateKey = toGmt8DateKey(safe.date) || "";
+    const timeline = getRecordTimelineData(dateKey);
+    
+    let embeddedImages = [];
+    if (includeImages && typeof getRecordImageUrls === "function") {
+        try {
+            embeddedImages = await getRecordImageUrls(safe);
+        } catch (e) {
+            console.warn("Failed to fetch images for export on date:", dateKey, e);
+        }
+    }
+
+    return {
+        date: dateKey,
+        weekNumber: timeline.weekNumber,
+        dayNumber: timeline.dayNumber,
+        timelineLabel: timeline.label,
+        hours: parseFloat(safe.hours) || 0,
+        reflection: typeof safe.reflection === "string" ? safe.reflection : "",
+        accomplishments: Array.isArray(safe.accomplishments)
+            ? safe.accomplishments.map((a) => String(a || "").trim()).filter(Boolean)
+            : [],
+        tools: Array.isArray(safe.tools)
+            ? safe.tools.map((t) => String(t || "").trim()).filter(Boolean)
+            : [],
+        personalHours: parseFloat(safe.personalHours) || 0,
+        sleepHours: parseFloat(safe.sleepHours) || 0,
+        recoveryHours: parseFloat(safe.recoveryHours) || 0,
+        commuteTotal: parseFloat(safe.commuteTotal) || 0,
+        commuteProductive: parseFloat(safe.commuteProductive) || 0,
+        identityScore: parseInt(safe.identityScore, 10) || 0,
+        embeddedImages: embeddedImages // Add this field
+    };
+}
+
+async function exportRecordsJSON() {
+    if (!Array.isArray(dailyRecords) || !dailyRecords.length) {
+        alert("No records to export.");
+        return;
+    }
+
+    const includeImages = confirm("Include images in JSON export?\n(Note: This will significantly increase file size)");
+
+    const records = await Promise.all(dailyRecords.map(r => normalizeRecordForJson(r, includeImages)));
+
+    const payload = {
+        type: "custom-dtr-records-export",
+        schemaVersion: 1, // Updated version
+        exportedAt: new Date().toISOString(),
+        settings: {
+            ojtStartDate: getCurrentOjtStartDate(),
+            requiredOjtHours: getCurrentRequiredOjtHours(),
+            semesterEndDate: getCurrentSemesterEndDate(),
+            timeZone: getCurrentTimeZone()
+        },
+        recordCount: dailyRecords.length,
+        records: records
+    };
+
+    const jsonText = JSON.stringify(payload, null, 2);
+    const fileName = getTodayFileName("DTR_Record_Name", "json");
+    const previewEl = document.getElementById("jsonExportPreviewText");
+    const modal = document.getElementById("jsonExportPreviewModal");
+    if (!previewEl || !modal) {
+        triggerJsonExportDownload(new Blob([jsonText], { type: "application/json;charset=utf-8" }), fileName);
+        return;
+    }
+
+    _pendingJsonExportBlob = new Blob([jsonText], { type: "application/json;charset=utf-8" });
+    _pendingJsonExportFileName = fileName;
+    
+    // For large JSONs with images, we might want to truncate the preview
+    if (jsonText.length > 50000) {
+        previewEl.textContent = jsonText.substring(0, 50000) + "\n\n... (preview truncated for performance) ...";
+    } else {
+        previewEl.textContent = jsonText;
+    }
+    
+    const fileNameInput = document.getElementById("jsonExportFileNameInput");
+    if (fileNameInput) fileNameInput.value = fileName;
+    modal.style.display = "flex";
+}
+
+function triggerJsonExportDownload(blob, fileName) {
+    if (!blob || !fileName) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+function closeJsonExportPreview() {
+    const modal = document.getElementById("jsonExportPreviewModal");
+    const previewEl = document.getElementById("jsonExportPreviewText");
+    const fileNameInput = document.getElementById("jsonExportFileNameInput");
+    if (modal) modal.style.display = "none";
+    if (previewEl) previewEl.textContent = "";
+    if (fileNameInput) fileNameInput.value = "";
+    _pendingJsonExportBlob = null;
+    _pendingJsonExportFileName = "";
+}
+
+function sanitizeJsonFileName(rawName, fallbackName) {
+    let name = String(rawName || "").trim();
+    if (!name) name = fallbackName || "DTR_Record_Name";
+    name = name.replace(/[\\/:*?"<>|]/g, "_");
+    if (!name.toLowerCase().endsWith(".json")) name += ".json";
+    return name;
+}
+
+function confirmJsonExportDownload() {
+    if (!_pendingJsonExportBlob || !_pendingJsonExportFileName) {
+        closeJsonExportPreview();
+        return;
+    }
+    const fileNameInput = document.getElementById("jsonExportFileNameInput");
+    const chosenName = sanitizeJsonFileName(
+        fileNameInput ? fileNameInput.value : "",
+        _pendingJsonExportFileName
+    );
+    triggerJsonExportDownload(_pendingJsonExportBlob, chosenName);
+    closeJsonExportPreview();
+}
+
+function extractJsonImportRecords(parsed) {
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === "object") {
+        if (Array.isArray(parsed.records)) return parsed.records;
+        if (parsed.record && typeof parsed.record === "object") return [parsed.record];
+        if (typeof parsed.date !== "undefined" && typeof parsed.hours !== "undefined") return [parsed];
+    }
+    return [];
+}
+
+function normalizeRecordForImport(record) {
+    const safe = record || {};
+    const dateKey = toGmt8DateKey(safe.date) || "";
+    const timeline = getRecordTimelineData(dateKey);
+    return {
+        date: dateKey,
+        weekNumber: timeline.weekNumber,
+        dayNumber: timeline.dayNumber,
+        timelineLabel: timeline.label,
+        hours: parseFloat(safe.hours) || 0,
+        reflection: typeof safe.reflection === "string" ? safe.reflection : "",
+        accomplishments: Array.isArray(safe.accomplishments)
+            ? safe.accomplishments.map((a) => String(a || "").trim()).filter(Boolean)
+            : [],
+        tools: Array.isArray(safe.tools)
+            ? safe.tools.map((t) => String(t || "").trim()).filter(Boolean)
+            : [],
+        personalHours: parseFloat(safe.personalHours) || 0,
+        sleepHours: parseFloat(safe.sleepHours) || 0,
+        recoveryHours: parseFloat(safe.recoveryHours) || 0,
+        commuteTotal: parseFloat(safe.commuteTotal) || 0,
+        commuteProductive: parseFloat(safe.commuteProductive) || 0,
+        identityScore: parseInt(safe.identityScore, 10) || 0,
+        embeddedImages: Array.isArray(safe.embeddedImages) ? safe.embeddedImages : []
+    };
+}
+
+function buildRecordFromImport(raw) {
+    const normalized = normalizeRecordForImport(raw);
+    if (!normalized.date || !Number.isFinite(normalized.hours)) return null;
+    return normalized;
+}
+
+function openJsonImportPreviewModal(record, metaLabel, showBulk = false) {
+    const modal = document.getElementById("jsonImportPreviewModal");
+    if (!modal) return;
+    const timeline = getRecordTimelineData(record.date);
+
+    const bulkBtn = document.getElementById("confirmBulkImportBtn");
+    if (bulkBtn) {
+        bulkBtn.style.display = showBulk ? "inline-block" : "none";
+    }
+
+    document.getElementById("jsonPreviewDate").textContent = record.date
+        ? `${record.date} (${timeline.label})`
+        : "-";
+    document.getElementById("jsonPreviewHours").textContent = String(record.hours ?? "-");
+    document.getElementById("jsonPreviewAccomplishments").textContent = String((record.accomplishments || []).length);
+    document.getElementById("jsonPreviewTools").textContent = String((record.tools || []).length);
+    document.getElementById("jsonPreviewPersonal").textContent = String(record.personalHours ?? 0);
+    document.getElementById("jsonPreviewSleep").textContent = String(record.sleepHours ?? 0);
+    document.getElementById("jsonPreviewRecovery").textContent = String(record.recoveryHours ?? 0);
+    document.getElementById("jsonPreviewIdentity").textContent = getIdentityAlignmentLabel(record.identityScore || 0);
+    
+    const imgCountEl = document.getElementById("jsonPreviewImagesCount");
+    if (imgCountEl) {
+        imgCountEl.textContent = String((record.embeddedImages || []).length);
+    }
+
+    document.getElementById("jsonPreviewReflection").textContent = record.reflection || "-";
+    document.getElementById("jsonPreviewMeta").textContent = metaLabel || "";
+    modal.style.display = "flex";
+}
+
+function closeJsonImportPreviewModal() {
+    _pendingImportedRecord = null;
+    _pendingImportedAllRecords = [];
+    _pendingImportMeta = "";
+    const modal = document.getElementById("jsonImportPreviewModal");
+    if (modal) modal.style.display = "none";
+}
+
+async function applyImportedRecordToForm(record) {
+    document.getElementById("date").value = record.date || "";
+    document.getElementById("hours").value = record.hours ?? "";
+    document.getElementById("reflection").value = record.reflection || "";
+    document.getElementById("accomplishments").value = (record.accomplishments || []).join("\n");
+    document.getElementById("tools").value = (record.tools || []).join(", ");
+    document.getElementById("personalHours").value = record.personalHours || "";
+    document.getElementById("sleepHours").value = record.sleepHours || "";
+    document.getElementById("recoveryHours").value = record.recoveryHours || "";
+    document.getElementById("commuteTotal").value = record.commuteTotal || "";
+    document.getElementById("commuteProductive").value = record.commuteProductive || "";
+    document.getElementById("identityScore").value = String(record.identityScore || 0);
+
+    const imgInput = document.getElementById("images");
+    if (imgInput) imgInput.value = "";
+    
+    // Handle status images
+    _importedImageIds = [];
+    const preview = document.getElementById("imagePreview");
+    if (preview) preview.innerHTML = "";
+
+    if (Array.isArray(record.embeddedImages) && record.embeddedImages.length > 0) {
+        try {
+            // Save to IndexedDB immediately for preview
+            _importedImageIds = await Promise.all(
+                record.embeddedImages.map(img => saveImageToStore(img))
+            );
+            
+            if (preview) {
+                const label = document.createElement("p");
+                label.style.cssText = "width:100%; font-size:10px; margin-bottom:5px; opacity:0.8;";
+                label.textContent = `Imported Images (${_importedImageIds.length}):`;
+                preview.appendChild(label);
+
+                _importedImageIds.forEach(id => {
+                    getImageFromStore(id).then(url => {
+                        const img = document.createElement("img");
+                        img.src = url;
+                        img.style.cssText = "width:60px; height:60px; object-fit:cover; border-radius:6px; border:2px solid var(--accent);";
+                        preview.appendChild(img);
+                    });
+                });
+            }
+        } catch (e) {
+            console.error("Failed to restore images for form preview:", e);
+        }
+    }
+
+    updateWeeklyCounter(record.date);
+}
+
+async function confirmJsonImportToForm() {
+    if (!_pendingImportedRecord) {
+        closeJsonImportPreviewModal();
+        return;
+    }
+    await applyImportedRecordToForm(_pendingImportedRecord);
+    closeJsonImportPreviewModal();
+    alert("Imported record (including images) loaded into Session Input. Click Save Day to persist it.");
+}
+
+async function bulkImportAllRecords() {
+    if (!_pendingImportedAllRecords || !_pendingImportedAllRecords.length) {
+        closeJsonImportPreviewModal();
+        return;
+    }
+
+    const count = _pendingImportedAllRecords.length;
+    if (!confirm(`Are you sure you want to merge ${count} records into your current data? Existing records for the same dates will be handled.`)) {
+        return;
+    }
+
+    if (typeof bulkMergeRecords === "function") {
+        await bulkMergeRecords(_pendingImportedAllRecords);
+    } else {
+        alert("Bulk merge function not found in storage module.");
+    }
+    
+    closeJsonImportPreviewModal();
+}
+
+function handleJsonImportFile(event) {
+    const input = event && event.target ? event.target : document.getElementById("jsonImportInput");
+    const file = input && input.files && input.files.length ? input.files[0] : null;
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const parsed = JSON.parse(String(reader.result || ""));
+            const rawRecords = extractJsonImportRecords(parsed);
+            if (!rawRecords.length) {
+                alert("No valid record found in this JSON file.");
+                return;
+            }
+
+            const validRecords = rawRecords
+                .map(buildRecordFromImport)
+                .filter((r) => r && r.date);
+            if (!validRecords.length) {
+                alert("JSON parsed, but no valid record format was found.");
+                return;
+            }
+
+            validRecords.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+            const selected = validRecords[validRecords.length - 1];
+            _pendingImportedRecord = selected;
+            _pendingImportedAllRecords = validRecords;
+            _pendingImportMeta = validRecords.length > 1
+                ? `Found ${validRecords.length} records in file. Previewing the latest date (${selected.date}).`
+                : "Found 1 record in file.";
+            openJsonImportPreviewModal(selected, _pendingImportMeta, validRecords.length > 1);
+        } catch (err) {
+            console.error("JSON import parse error:", err);
+            alert("Failed to parse JSON file.");
+        } finally {
+            if (input) input.value = "";
+        }
+    };
+    reader.onerror = () => {
+        if (input) input.value = "";
+        alert("Failed to read selected file.");
+    };
+    reader.readAsText(file);
 }

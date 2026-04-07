@@ -71,6 +71,32 @@ async function clearAllRecords() {
     alert("All DTR records cleared.");
 }
 
+async function hardClearAllData() {
+    const confirmMsg = window.DTRI18N ? window.DTRI18N.t("confirm_clear_all_data") : "This will delete ALL DTR records, images, settings, and themes. This action is irreversible. Continue?";
+    if (!confirm(confirmMsg)) return;
+
+    localStorage.clear();
+
+    const dbName = "DTRImageStore";
+    const deleteRequest = indexedDB.deleteDatabase(dbName);
+
+    deleteRequest.onsuccess = () => {
+        const successMsg = window.DTRI18N ? window.DTRI18N.t("cleared_all_data_success") : "All data has been wiped. The page will now reload.";
+        alert(successMsg);
+        window.location.href = "index.html"; 
+    };
+
+    deleteRequest.onerror = () => {
+        console.error("Error deleting IndexedDB:", deleteRequest.error);
+        alert("Failed to delete image database fully. Please clear site data manually in browser settings.");
+        window.location.href = "index.html";
+    };
+
+    deleteRequest.onblocked = () => {
+        alert("Database deletion blocked. Please close other open DTR tabs and try again.");
+    };
+}
+
 function checkDataHealth(record) {
     const warnings = [];
     if (record.sleepHours === 0) warnings.push("Sleep Duration is 0");
@@ -78,7 +104,9 @@ function checkDataHealth(record) {
     if (!record.identityScore) warnings.push("Identity Alignment not set");
     
     if (warnings.length > 0) {
-        return confirm(`Warning: The following metrics are missing:\n- ${warnings.join("\n- ")}\n\nSave anyway?`);
+        return confirm("Warning: The following metrics are missing:\n- {list}\n\nSave anyway?", {
+            list: warnings.join("\n- ")
+        });
     }
     return true;
 }
@@ -135,6 +163,9 @@ async function loadDTRRecords() {
     return Array.isArray(fallback) ? fallback : [];
 }
 
+// --- GLOBALS ---
+let _importedImageIds = []; // Temporary store for images from JSON import
+
 function getErrorSummary(err) {
     if (!err) return "Unknown error";
     if (typeof err === "string") return err;
@@ -155,7 +186,7 @@ function submitDTR() {
     const startDate = typeof getCurrentOjtStartDate === "function" ? getCurrentOjtStartDate() : null;
     const dateKey = typeof toGmt8DateKey === "function" ? toGmt8DateKey(date) : date;
     if (startDate && dateKey && dateKey < startDate) {
-        alert(`DTR Date cannot be earlier than OJT Starting Date (${startDate}).`);
+        alert("DTR Date cannot be earlier than OJT Starting Date ({startDate}).", startDate);
         return;
     }
 
@@ -183,12 +214,15 @@ function submitDTR() {
     const recordCheck = new DailyRecord(date, hours, reflection, [], [], [], l2Data);
     if (!checkDataHealth(recordCheck)) return;
 
-    if (files.length > 0) {
+    if (files.length > 0 || _importedImageIds.length > 0) {
         Promise.allSettled(files.map((file) => saveImageToStore(file)))
             .then((results) => {
-                const imageIds = results
+                const uploadedIds = results
                     .filter((r) => r.status === "fulfilled")
                     .map((r) => r.value);
+                
+                const finalImageIds = [...new Set([...uploadedIds, ..._importedImageIds])];
+
                 const rejected = results
                     .map((r, index) => ({ r, index }))
                     .filter((x) => x.r.status === "rejected")
@@ -200,14 +234,17 @@ function submitDTR() {
 
                 if (rejected.length) {
                     console.warn("Some uploaded images failed to store in IndexedDB.", rejected);
-                    alert("Some images failed to store (" + rejected.length + "). Saving only successfully uploaded images.");
+                    alert("Some images failed to store ({count}). Saving only successfully uploaded images.", { count: rejected.length });
                 }
-                saveRecord(date, hours, reflection, accomplishments, tools, imageIds, l2Data);
+                saveRecord(date, hours, reflection, accomplishments, tools, finalImageIds, l2Data);
+                _importedImageIds = []; // Clear after use
             })
             .catch((err) => {
                 console.error("IndexedDB image save error:", err);
-                if (confirm("Failed to save images to IndexedDB. Save DTR without images?")) {
-                    saveRecord(date, hours, reflection, accomplishments, tools, [], l2Data);
+                const finalIds = _importedImageIds.length > 0 ? _importedImageIds : [];
+                if (confirm("Failed to save new images to IndexedDB. Save DTR with imported/existing images only?")) {
+                    saveRecord(date, hours, reflection, accomplishments, tools, finalIds, l2Data);
+                    _importedImageIds = [];
                 } else {
                     alert("Submission cancelled.");
                 }
@@ -330,7 +367,7 @@ async function saveRecord(date, hours, reflection, accomplishments, tools, image
     const startDate = typeof getCurrentOjtStartDate === "function" ? getCurrentOjtStartDate() : null;
     const dateKey = typeof toGmt8DateKey === "function" ? toGmt8DateKey(date) : date;
     if (startDate && dateKey && dateKey < startDate) {
-        alert(`DTR Date cannot be earlier than OJT Starting Date (${startDate}).`);
+        alert("DTR Date cannot be earlier than OJT Starting Date " + startDate);
         return;
     }
 
@@ -355,7 +392,7 @@ async function saveRecord(date, hours, reflection, accomplishments, tools, image
             const start = typeof getCurrentOjtStartDate === "function" ? getCurrentOjtStartDate() : null;
 
             if (start && ((nextIncomingDate && nextIncomingDate < start) || (nextExistingDate && nextExistingDate < start))) {
-                alert(`DTR Date cannot be earlier than OJT Starting Date (${start}).`);
+                alert("DTR Date cannot be earlier than OJT Starting Date " + start);
                 return;
             }
 
@@ -405,6 +442,73 @@ async function saveRecord(date, hours, reflection, accomplishments, tools, image
     alert("Daily DTR saved and form cleared!");
 }
 
+async function bulkMergeRecords(importedList) {
+    if (!Array.isArray(importedList) || importedList.length === 0) return;
+
+    const previous = [...dailyRecords];
+    const existingMap = {};
+    dailyRecords.forEach(r => {
+        const dk = toGmt8DateKey(r.date) || r.date;
+        existingMap[dk] = r;
+    });
+
+    let newCount = 0;
+    let updateCount = 0;
+    let imageCount = 0;
+
+    for (const raw of importedList) {
+        const dk = toGmt8DateKey(raw.date) || raw.date;
+        
+        let finalImageIds = Array.isArray(raw.imageIds) ? [...raw.imageIds] : [];
+        if (Array.isArray(raw.embeddedImages) && raw.embeddedImages.length > 0) {
+            try {
+                // Save embedded images to store and get new IDs
+                const savedIds = await Promise.all(
+                    raw.embeddedImages.map(imgData => saveImageToStore(imgData))
+                );
+                // Merge with existing IDs if any, ensuring uniqueness
+                finalImageIds = [...new Set([...finalImageIds, ...savedIds])];
+                imageCount += savedIds.length;
+            } catch (e) {
+                console.warn("Failed to restore some images for date:", dk, e);
+            }
+        }
+
+        const record = new DailyRecord(dk, raw.hours, raw.reflection, raw.accomplishments, raw.tools, [], {
+            personalHours: raw.personalHours,
+            sleepHours: raw.sleepHours,
+            recoveryHours: raw.recoveryHours,
+            commuteTotal: raw.commuteTotal,
+            commuteProductive: raw.commuteProductive,
+            identityScore: raw.identityScore
+        }, finalImageIds);
+
+        if (existingMap[dk]) {
+            updateCount++;
+        } else {
+            newCount++;
+        }
+        existingMap[dk] = record;
+    }
+
+    dailyRecords = Object.values(existingMap);
+    dailyRecords.sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
+
+    if (!await persistDTR(dailyRecords)) {
+        dailyRecords = previous;
+        alert("Bulk import failed due to storage limits.");
+        return;
+    }
+
+    loadReflectionViewer();
+    renderDailyGraph();
+    renderWeeklyGraph();
+    updateExportWeekOptions();
+    if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
+
+    alert(`Bulk import complete!\n- ${newCount} new records added\n- ${updateCount} existing records updated\n- ${imageCount} images restored`);
+}
+
 function resolveDateConflictModal({ incomingDate, existingDate }) {
     return new Promise((resolve) => {
         let settled = false;
@@ -438,8 +542,9 @@ function resolveDateConflictModal({ incomingDate, existingDate }) {
             "color:var(--text)"
         ].join(";");
 
+        const conflictTitle = "Date Conflict Detected";
         panel.innerHTML = `
-            <h3 style="margin:0 0 10px 0; color:var(--accent);">Date Conflict Detected</h3>
+            <h3 style="margin:0 0 10px 0; color:var(--accent);">${conflictTitle}</h3>
             <p style="margin:0 0 12px 0;">A record already exists for this date. Choose how to proceed.</p>
             <div style="display:grid; grid-template-columns:1fr; gap:10px; margin-bottom:12px;">
                 <label style="display:flex; flex-direction:column; gap:4px;">

@@ -1,9 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DTR FAQ</title>
+  <title data-i18n="faq_title">DTR FAQ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&family=Noto+Sans+TC:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/theme.css">
 
@@ -16,6 +17,8 @@
   <meta name="theme-color" content="#10131a">
 
   <script src="scripts/theme-sync.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/dist/index.min.js"></script>
+  <script src="scripts/dtr-i18n.js"></script>
   <script>
     const savedTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === 'function')
       ? window.ThemeSync.getLocalTheme()
@@ -73,42 +76,49 @@
     <section class="card">
       <div class="faq-header">
         <div>
-          <h1 style="margin:0;">DTR FAQ</h1>
-          <p class="subtitle" style="margin-top:6px;">Common questions about using the Custom Daily Time Record tracker.</p>
+          <h1 style="margin:0;" data-i18n="faq_title">DTR FAQ</h1>
+          <p class="subtitle" style="margin-top:6px;" data-i18n="faq_subtitle">Common questions about using the Custom Daily Time Record tracker.</p>
         </div>
-        <button type="button" onclick="window.location.href='index.html'">Back to DTR</button>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+          <label for="languageSelect" style="opacity:0.85;" data-i18n="language">Language</label>
+          <select id="languageSelect" style="max-width: 220px;"></select>
+          <button type="button" onclick="window.location.href='index.html'" data-i18n="faq_back_to_dtr">Back to DTR</button>
+        </div>
       </div>
     </section>
 
     <section class="faq-list">
       <details class="card" open>
-        <summary>What is this DTR for?</summary>
-        <p>This DTR is used to log your daily OJT hours, reflection, accomplishments, and telemetry so you can track progress and performance trends over time.</p>
+        <summary data-i18n="faq_q_what_is_dtr_for">What is this DTR for?</summary>
+        <p data-i18n="faq_a_what_is_dtr_for">This DTR is used to log your daily OJT hours, reflection, accomplishments, and telemetry so you can track progress and performance trends over time.</p>
       </details>
 
       <details class="card">
-        <summary>How do I add a daily entry?</summary>
-        <p>Go to the main page, set the date and hours worked, complete your notes, then click <strong>Save Day</strong>. Your record is saved locally in your browser.</p>
+        <summary data-i18n="faq_q_add_daily_entry">How do I add a daily entry?</summary>
+        <p>
+          <span data-i18n="faq_a_add_daily_entry_prefix">Go to the main page, set the date and hours worked, complete your notes, then click</span>
+          <strong data-i18n="save_day">Save Day</strong><span data-i18n="faq_a_add_daily_entry_suffix">. Your record is saved locally in your browser.</span>
+        </p>
       </details>
 
       <details class="card">
-        <summary>Can I edit or delete entries?</summary>
-        <p>Yes. You can use the viewer/edit tools to update a specific record, delete the last entry, or clear all records from local storage.</p>
+        <summary data-i18n="faq_q_edit_or_delete">Can I edit or delete entries?</summary>
+        <p data-i18n="faq_a_edit_or_delete">Yes. You can use the viewer/edit tools to update a specific record, delete the last entry, or clear all records from local storage.</p>
       </details>
 
       <details class="card">
-        <summary>What is Telemetry View?</summary>
-        <p>Telemetry View provides visual analytics such as pace, forecast completion, delta trends, and wellness indicators based on your DTR logs.</p>
+        <summary data-i18n="faq_q_what_is_telemetry_view">What is Telemetry View?</summary>
+        <p data-i18n="faq_a_what_is_telemetry_view">Telemetry View provides visual analytics such as pace, forecast completion, delta trends, and wellness indicators based on your DTR logs.</p>
       </details>
 
       <details class="card">
-        <summary>Where is my data stored?</summary>
-        <p>Data is stored in your browser (localStorage and IndexedDB for images). It is not automatically synced to a server unless you add one.</p>
+        <summary data-i18n="faq_q_where_is_data_stored">Where is my data stored?</summary>
+        <p data-i18n="faq_a_where_is_data_stored">Data is stored in your browser (localStorage and IndexedDB for images). It is not automatically synced to a server unless you add one.</p>
       </details>
 
       <details class="card">
-        <summary>Why are some icons or style changes not updating immediately?</summary>
-        <p>Mobile browsers cache aggressively. Refresh the page, clear site data/cache, or reopen the tab after theme/icon updates.</p>
+        <summary data-i18n="faq_q_icons_not_updating">Why are some icons or style changes not updating immediately?</summary>
+        <p data-i18n="faq_a_icons_not_updating">Mobile browsers cache aggressively. Refresh the page, clear site data/cache, or reopen the tab after theme/icon updates.</p>
       </details>
     </section>
   </div>
@@ -118,6 +128,13 @@
     if (typeof updateFavicon === 'function') {
       updateFavicon(savedTheme || 'f1');
     }
+  </script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
+        window.DTRI18N.bootstrap();
+      }
+    });
   </script>
 </body>
 </html>

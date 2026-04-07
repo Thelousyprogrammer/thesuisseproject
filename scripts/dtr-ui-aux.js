@@ -25,14 +25,15 @@ function updateReflectionWeekOptions() {
     if (!select) return;
 
     const currentValue = select.value || "current";
-    select.innerHTML = '<option value="current">Current Week</option>';
+    const currentWeekLabel = window.DTRI18N ? window.DTRI18N.t("current_week") : "Current Week";
+    select.innerHTML = `<option value="current">${currentWeekLabel}</option>`;
 
     const weeks = [...new Set(dailyRecords.map(r => getWeekNumber(r.date)))].sort((a, b) => b - a);
     weeks.forEach((w) => {
         const range = getWeekDateRange(w);
         const opt = document.createElement("option");
         opt.value = String(w);
-        opt.textContent = `Week ${w}`;
+        opt.textContent = window.DTRI18N ? window.DTRI18N.t("week_label", { week: w }) : `Week ${w}`;
         opt.title = `${range.start} - ${range.end}`;
         select.appendChild(opt);
     });

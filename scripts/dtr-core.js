@@ -15,13 +15,15 @@ const DTR_COLORS = {
     neutral: "var(--color-neutral)",
     warning: "var(--color-warning)",
     good: "var(--color-good)",
-    excellent: "var(--color-excellent)"
+    excellent: "var(--color-excellent)",
+    aux: "var(--chart-aux)"
 };
 
 let dailyRecords = []; // Global state for the DTR app
 let editingIndex = null;
 let currentSortMode = "date-asc";
 let currentReflectionViewMode = "all";
+let currentSummaryRecord = null; // Track current record for language re-render
 const REQUIRED_OJT_HOURS_MIN = 1;
 
 class DailyRecord {
@@ -337,7 +339,8 @@ function formatGmt8DateLabel(input, options = { month: "short", day: "numeric" }
     if (!key) return "";
     const date = parseDateKeyGmt8(key);
     if (!date) return "";
-    return date.toLocaleDateString("en-US", { ...options, timeZone: "UTC" });
+    const lang = (window.DTRI18N && typeof window.DTRI18N.getLanguage === "function") ? window.DTRI18N.getLanguage() : "en-US";
+    return date.toLocaleDateString(lang, { ...options, timeZone: "UTC" });
 }
 
 function getWeekNumber(date, reference = OJT_START) {
@@ -347,6 +350,25 @@ function getWeekNumber(date, reference = OJT_START) {
     const diff = d.getTime() - ref.getTime();
     if (diff < 0) return 1;
     return Math.floor(diff / (7 * DAY_MS)) + 1;
+}
+
+function getDayNumberInOjtWeek(date, reference = OJT_START) {
+    const d = parseDateKeyGmt8(toGmt8DateKey(date));
+    const ref = parseDateKeyGmt8(toGmt8DateKey(reference));
+    if (!d || !ref) return 1;
+    const diff = d.getTime() - ref.getTime();
+    if (diff < 0) return 1;
+    return Math.floor(diff / DAY_MS) % 7 + 1;
+}
+
+function getTimelineWeekDayLabel(date, reference = OJT_START) {
+    const week = getWeekNumber(date, reference);
+    const day = getDayNumberInOjtWeek(date, reference);
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+    if (t) {
+        return t("timeline_label", { week, day });
+    }
+    return `Week: ${week} | Day: ${day}`;
 }
 
 function getTotalHours() {
@@ -404,6 +426,30 @@ function setTheme(themeName, options = {}) {
     console.log("Theme synced:", fallbackTheme);
 }
 
+// Inside dtr-core.js
+function syncF1LightToggleLabel() {
+    const btn = document.getElementById('telemetryF1LightToggleBtn');
+    if (!btn) return;
+
+    // Check if i18n is ready and the function exists
+    const isI18nReady = window.DTRI18N && typeof window.DTRI18N.t === 'function';
+    
+    // Use the translation if ready, otherwise use a hardcoded default
+    const isLightOn = document.documentElement.getAttribute('data-f1-light') === 'on';
+    const labelKey = isLightOn ? 'themes.light_on' : 'themes.light_off';
+    
+    btn.textContent = isI18nReady ? window.DTRI18N.t(labelKey) : (isLightOn ? "Light: On" : "Light: Off");
+}
+
+function toggleF1LightMode() {
+    const activeTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === "function")
+        ? window.ThemeSync.getLocalTheme()
+        : (localStorage.getItem("user-theme") || "f1");
+    if (activeTheme !== "f1" && activeTheme !== "f1-light") return;
+    const nextTheme = activeTheme === "f1-light" ? "f1" : "f1-light";
+    setTheme(nextTheme);
+}
+
 /**
  * Update the page favicon based on the active theme.
  * Looks for an element with id `site-favicon` and updates its href.
@@ -411,11 +457,13 @@ function setTheme(themeName, options = {}) {
 function updateFavicon(themeName) {
     const map = {
         'f1': 'favicons/F1Favicon32.png',
+        'f1-light': 'favicons/F1Favicon32.png',
         'cadillac': 'favicons/CaddyFavicon32.png',
         'apx': 'favicons/APXFavicon32.png',
         'mclaren': 'favicons/McLFavicon32.png',
         'kiki': 'favicons/KikiFavicon32.png',
-        'ferrari': 'favicons/FerrariFavicon32.png'
+        'ferrari': 'favicons/FerrariFavicon32.png',
+        'ztmy': 'favicons/ZTMYFavicon32.png'
         // fallback or other themes can be added here
     };
     const href = map[themeName] || map['f1'];
@@ -549,7 +597,9 @@ function buildTrajectorySeries({ logs = dailyRecords, paceOverride = null, start
     const projectionStartDate = lastLogDate && lastLogDate > today ? lastLogDate : today;
 
     const logMap = {};
-    normalizedLogs.forEach((l) => { logMap[l.dateKey] = l.hours; });
+    normalizedLogs.forEach((l) => {
+        logMap[l.dateKey] = (logMap[l.dateKey] || 0) + l.hours;
+    });
 
     const labels = [];
     const labelDateKeys = [];
@@ -596,5 +646,4 @@ function buildTrajectorySeries({ logs = dailyRecords, paceOverride = null, start
 function calculateForecast(logs = dailyRecords, overridePace = null) {
     return calculateForecastUnified({ logs, paceOverride: overridePace });
 }
-
 

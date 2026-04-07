@@ -1,0 +1,87 @@
+Date : 2026-03-23 09:31:31
+Directory : c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io
+Total : 51 files,  15337 codes, 410 comments, 1261 blanks, all 17008 lines
+
+Languages
++------------+------------+------------+------------+------------+------------+
+| language   | files      | code       | comment    | blank      | total      |
++------------+------------+------------+------------+------------+------------+
+| JavaScript |         20 |      6,583 |        217 |        827 |      7,627 |
+| JSON       |         14 |      5,215 |          0 |          2 |      5,217 |
+| PostCSS    |          3 |      2,093 |        142 |        323 |      2,558 |
+| HTML       |          3 |        986 |         31 |         78 |      1,095 |
+| XML        |          6 |        339 |          0 |          6 |        345 |
+| Python     |          4 |         99 |         20 |         24 |        143 |
+| Markdown   |          1 |         22 |          0 |          1 |         23 |
++------------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                     | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                        |         51 |     15,337 |        410 |      1,261 |     17,008 |
+| . (Files)                                                                                |          4 |      1,008 |         31 |         79 |      1,118 |
+| css                                                                                      |          3 |      2,093 |        142 |        323 |      2,558 |
+| favicons                                                                                 |          7 |        350 |          0 |          7 |        357 |
+| locales                                                                                  |         13 |      5,204 |          0 |          1 |      5,205 |
+| scripts                                                                                  |         20 |      6,583 |        217 |        827 |      7,627 |
+| tmp                                                                                      |          4 |         99 |         20 |         24 |        143 |
++------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| filename                                                                                 | language   | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\README.md                           | Markdown   |         22 |          0 |          1 |         23 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\css\base.css                        | PostCSS    |        652 |         23 |         84 |        759 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\css\telemetry.css                   | PostCSS    |        630 |         21 |        106 |        757 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\css\theme.css                       | PostCSS    |        811 |         98 |        133 |      1,042 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\faq.html                            | HTML       |        122 |          1 |         17 |        140 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\favicons\APXFavicon.svg             | XML        |         41 |          0 |          1 |         42 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\favicons\CaddyFavicon.svg           | XML        |         12 |          0 |          1 |         13 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\favicons\F1Favicon.svg              | XML        |         18 |          0 |          1 |         19 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\favicons\FerrariFavicon.svg         | XML        |         20 |          0 |          1 |         21 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\favicons\KikiFavicon.svg            | XML        |        156 |          0 |          1 |        157 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\favicons\McLFavicon.svg             | XML        |         92 |          0 |          1 |         93 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\favicons\site.webmanifest           | JSON       |         11 |          0 |          1 |         12 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\index.html                          | HTML       |        458 |         19 |         45 |        522 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\de.json                     | JSON       |        395 |          0 |          0 |        395 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\en.json                     | JSON       |        396 |          0 |          1 |        397 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\es.json                     | JSON       |        396 |          0 |          0 |        396 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\fr.json                     | JSON       |        395 |          0 |          0 |        395 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\id.json                     | JSON       |        412 |          0 |          0 |        412 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\it.json                     | JSON       |        396 |          0 |          0 |        396 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\ja.json                     | JSON       |        410 |          0 |          0 |        410 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\ms.json                     | JSON       |        395 |          0 |          0 |        395 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\pt.json                     | JSON       |        395 |          0 |          0 |        395 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\tl.json                     | JSON       |        395 |          0 |          0 |        395 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\vi.json                     | JSON       |        395 |          0 |          0 |        395 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\zh-Hans.json                | JSON       |        412 |          0 |          0 |        412 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\locales\zh-Hant.json                | JSON       |        412 |          0 |          0 |        412 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\audit-i18n-index-ja.cjs     | JavaScript |         13 |          0 |          5 |         18 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\audit-i18n-index-locale.cjs | JavaScript |         24 |          0 |          6 |         30 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\dtr-core.js                 | JavaScript |        569 |         10 |         73 |        652 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\dtr-exports.js              | JavaScript |        703 |         34 |        110 |        847 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\dtr-graphs.js               | JavaScript |        115 |         10 |         26 |        151 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\dtr-i18n.js                 | JavaScript |        565 |          5 |         17 |        587 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\dtr-image-store.js          | JavaScript |        294 |         28 |         23 |        345 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\dtr-storage-aux.js          | JavaScript |        937 |          8 |        115 |      1,060 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\dtr-storage.js              | JavaScript |        493 |         18 |         80 |        591 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\dtr-ui-aux.js               | JavaScript |        216 |          4 |         36 |        256 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\dtr-ui.js                   | JavaScript |        482 |          7 |         60 |        549 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\script.js                   | JavaScript |        134 |         15 |         21 |        170 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\telemetry-charts.js         | JavaScript |        760 |          9 |         57 |        826 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\telemetry-core.js           | JavaScript |          6 |          7 |          3 |         16 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\telemetry-sim.js            | JavaScript |        168 |         15 |         31 |        214 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\telemetry.js                | JavaScript |        653 |         11 |         90 |        754 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\test_calculations.js        | JavaScript |         91 |         19 |         19 |        129 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\test_telemetry_logic.js     | JavaScript |        160 |          8 |         30 |        198 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\theme-sync.js               | JavaScript |         78 |          4 |         11 |         93 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\scripts\week-comparison.js          | JavaScript |        122 |          5 |         14 |        141 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\telemetry.html                      | HTML       |        406 |         11 |         16 |        433 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\tmp\apply_charts_i18n.py            | Python     |         17 |         14 |          9 |         40 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\tmp\apply_charts_i18n_v2.py         | Python     |         18 |          4 |          7 |         29 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\tmp\inspect_line.py                 | Python     |          7 |          0 |          1 |          8 |
+| c:\xampp\htdocs\DTR_Working_Tree\customDTR.github.io\tmp\update_locales.py               | Python     |         57 |          2 |          7 |         66 |
+| Total                                                                                    |            |     15,337 |        410 |      1,261 |     17,008 |
++------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+

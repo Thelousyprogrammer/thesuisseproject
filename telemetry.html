@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>DTR Telemetry | Performance Analytics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&family=Noto+Sans+TC:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/telemetry.css">
   <link rel="stylesheet" href="css/theme.css">
@@ -14,6 +15,8 @@
   <link rel="manifest" href="favicons/site.webmanifest">
   <meta name="theme-color" content="#10131a">
   <script src="scripts/theme-sync.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/dist/index.min.js"></script>
+  <script src="scripts/dtr-i18n.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     // Get the saved theme immediately to prevent a white "flash" on load
@@ -29,24 +32,28 @@
   <!-- Header: compact single row -->
   <header class="telemetry-header card">
     <div class="telemetry-header-inner">
-      <h1>Productivity Telemetry</h1>
+      <h1 data-i18n="telemetry_dashboard.telemetry_title">Productivity Telemetry</h1>
       <div class="telemetry-window-control">
-        <label for="weekSelect" class="telemetry-label">Window</label>
+        <label for="weekSelect" class="telemetry-label" data-i18n="telemetry_window">Window</label>
         <select id="weekSelect" class="telemetry-select" onchange="updateView()">
-          <option value="all">Full OJT Span</option>
+          <option value="all" data-i18n="telemetry_dashboard.all_weeks">Full OJT Span</option>
         </select>
     </div>  
       <div class="telemetry-header-actions">
-        <label for="card" class="telemetry-label">Themes:</label>
-        <button class="telemetry-btn btn-theme-f1" onclick="setTelemetryTheme('f1')">F1</button>
-        <button class="telemetry-btn btn-theme-cadillac" onclick="setTelemetryTheme('cadillac')">Cadillac</button>
-        <button class="telemetry-btn btn-theme-apx" onclick="setTelemetryTheme('apx')">APX GP</button>
-        <button class="telemetry-btn btn-theme-mclaren" onclick="setTelemetryTheme('mclaren')">McLaren</button>
-        <button class="telemetry-btn btn-theme-ferrari" onclick="setTelemetryTheme('ferrari')">Ferrari</button>
-        <span class="export-divider">|</span>
-        <button class="telemetry-btn btn-theme-kiki" onclick="setTelemetryTheme('kiki')">Kiki</button>
-        <span class="export-divider">|</span>
-        <button class="telemetry-btn" onclick="window.location.href='index.html'">Back to DTR</button>
+        <label for="languageSelect" class="telemetry-label" data-i18n="meta.language">Language</label>
+        <select id="languageSelect" class="telemetry-select" style="max-width: 220px;"></select>
+        <label for="telemetryThemeSelect" class="telemetry-label" data-i18n="telemetry_themes">Themes:</label>
+        <select id="telemetryThemeSelect" class="telemetry-select" onchange="setTelemetryTheme(this.value)">
+          <option value="f1" data-i18n="theme_formula1">Formula 1</option>
+          <option value="cadillac" data-i18n="theme_cadillac">Cadillac</option>
+          <option value="apx" data-i18n="theme_apx">APX GP</option>
+          <option value="mclaren" data-i18n="theme_mclaren">McLaren</option>
+          <option value="ferrari" data-i18n="theme_ferrari">Ferrari</option>
+          <option value="kiki" data-i18n="theme_kiki">Kiki</option>
+          <option value="ztmy" data-i18n="theme_ztmy">ずとまよ</option>
+        </select>
+        <button id="telemetryF1LightToggleBtn" class="telemetry-btn light-toggle-btn" onclick="toggleTelemetryF1LightMode()" data-i18n="light_off">Light: Off</button>
+        <button class="telemetry-btn" onclick="window.location.href='index.html'" data-i18n="navigation.back_to_dtr">Back to DTR</button>
       </div>
     </div>
   </header>
@@ -55,53 +62,70 @@
   <section class="telemetry-section simulation-box" id="simSection">
     <div class="card sim-card">
       <div class="sim-header">
-        <h3><span class="sim-icon">⚡</span> Performance Simulator</h3>
+        <h3><span class="sim-icon">⚡</span> <span data-i18n="simulator.telemetry_performance_simulator">Performance Simulator</span></h3>
         <div class="sim-actions">
-           <button class="telemetry-btn btn-dim" onclick="toggleSimulation()" id="simToggleBtn">Enter Sim Mode</button>
-           <button class="telemetry-btn btn-danger" onclick="resetTelemetry()" style="display:none" id="simResetBtn">Reset Data</button>
+           <button class="telemetry-btn btn-dim" onclick="toggleSimulation()" id="simToggleBtn" data-i18n="simulator.telemetry_enter_sim_mode">Enter Sim Mode</button>
+           <button class="telemetry-btn btn-danger" onclick="resetTelemetry()" style="display:none" id="simResetBtn" data-i18n="telemetry_reset_data">Reset Data</button>
         </div>
       </div>
       <div id="simControls" class="sim-body" style="display:none">
         <div class="sim-row">
           <div class="sim-input-group">
-            <label>Daily Hours:</label>
+            <label data-i18n="telemetry_daily_hours">Daily Hours:</label>
             <input type="number" id="simHours" value="8" step="0.5" min="0" max="24">
           </div>
           <div class="sim-input-group">
-            <label>Days to Add:</label>
+            <label data-i18n="telemetry_days_to_add">Days to Add:</label>
             <input type="number" id="simDays" value="5" min="1" max="30">
           </div>
-          <button class="telemetry-btn btn-accent" onclick="runSimulation()">Inject Sim Data</button>
+          <div class="sim-input-group">
+            <label data-i18n="telemetry_sim_start_from">Start From:</label>
+            <select id="simStartMode" onchange="toggleSimStartDate(this.value)">
+              <option value="last" data-i18n="telemetry_sim_after_last">After Last Record</option>
+              <option value="specific" data-i18n="telemetry_sim_specific_date">Specific Date</option>
+            </select>
+          </div>
+          <div class="sim-input-group" id="simSpecificDateGroup" style="display:none">
+            <label data-i18n="dtr_date">Date:</label>
+            <input type="date" id="simStartDate">
+          </div>
+          <button class="telemetry-btn btn-accent" onclick="runSimulation()" data-i18n="telemetry_inject_sim_data">Inject Sim Data</button>
         </div>
-        <p class="sim-note">Note: Simulated data is temporary and won't affect your real DTR records unless synced.</p>
+        <p class="sim-note" data-i18n="telemetry_sim_note">Note: Simulated data is temporary and won't affect your real DTR records unless synced.</p>
+        <div id="simTracker" style="display:none; margin-top: 10px; padding: 8px 12px; background: rgba(var(--accent-rgb, 255, 30, 0), 0.1); border-left: 3px solid var(--accent); font-size: 13px; border-radius: 0 4px 4px 0;">
+          <span style="opacity: 0.8;">Simulation Anchor:</span> <strong id="simAnchorDateDisplay" style="color: var(--accent);">N/A</strong>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- Section: Key metrics (2 rows & 3 cols) -->
   <section class="telemetry-section">
-    <h2 class="section-title">Overview</h2>
+    <div class="section-header-flex">
+      <h2 class="section-title" style="border:none; margin:0;" data-i18n="telemetry_overview">Overview</h2>
+      <button class="telemetry-btn" onclick="window.location.href='week-comparison.html'" data-i18n="telemetry_weekly_comparison_view">Weekly Comparison View</button>
+    </div>
     <div class="telemetry-stats-grid">
       <div class="card stat-card" id="forecastCard">
-        <h3>OJT Forecast</h3>
+        <h3 data-i18n="telemetry_ojt_forecast">OJT Forecast</h3>
         <div class="stat-rows">
-          <div class="stat-row"><span>Total Rendered</span><strong id="totalRenderedText">0h</strong></div>
-          <div class="stat-row"><span>Remaining</span><strong id="remainingHoursText" class="stat-accent">0h</strong></div>
-          <div class="stat-row"><span>Status</span><span id="timeDeficitText">...</span></div>
-          <div class="stat-row"><span>Projected</span><strong id="completionDateText">TBD</strong></div>
+          <div class="stat-row"><span data-i18n="telemetry_total_rendered">Total Rendered</span><strong id="totalRenderedText">0h</strong></div>
+          <div class="stat-row"><span data-i18n="telemetry_remaining">Remaining</span><strong id="remainingHoursText" class="stat-accent">0h</strong></div>
+          <div class="stat-row"><span data-i18n="telemetry_status">Status</span><span id="timeDeficitText">...</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_projected">Projected</span><strong id="completionDateText">TBD</strong></div>
         </div>
-        <small id="avgPaceNote" class="stat-note">Based on current pace</small>
+        <small id="avgPaceNote" class="stat-note" data-i18n="telemetry_based_on_current_pace">Based on current pace</small>
       </div>
       <div class="card stat-card" id="paceCalculatorCard">
-        <h3>Required Pace</h3>
+        <h3 data-i18n="telemetry_required_pace">Required Pace</h3>
         <div class="stat-rows">
-          <div class="stat-row"><span>Remaining</span><span id="remHoursPace" class="stat-accent">0h</span></div>
-          <div class="stat-row"><span>Workdays left</span><span id="remDaysPace">0</span></div>
-          <div class="stat-row"><span>Last 7d avg</span><span id="last7DayPace">0.0h/day</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_remaining">Remaining</span><span id="remHoursPace" class="stat-accent">0h</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_workdays_left">Workdays left</span><span id="remDaysPace">0</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_last_7d_avg">Last 7d avg</span><span id="last7DayPace">0.0h/day</span></div>
         </div>
         <div class="pace-slider-wrap">
           <label style="display:flex; justify-content:space-between; align-items:center;">
-            <span>Projected Target</span>
+            <span data-i18n="telemetry_projected_target">Projected Target</span>
             <div style="display:flex; align-items:center; gap:8px;">
               <span><span id="paceSliderVal">8.0</span>h/day</span>
               <button class="telemetry-btn" id="resetPaceBtn" onclick="resetPaceSlider()" style="padding: 2px 6px; font-size: 10px; height: auto;">Reset</button>
@@ -109,45 +133,45 @@
           </label>
           <input type="range" id="paceSlider" min="1" max="16" step="0.5" value="8" oninput="updateTargetPace(this.value)">
         </div>
-        <p id="paceStatusMsg" class="stat-msg">Calculating</p>
+        <p id="paceStatusMsg" class="stat-msg" data-i18n="telemetry_calculating">Calculating</p>
       </div>
       <div class="card stat-card" id="efficiencyCard">
-        <h3>Efficiency</h3>
+        <h3 data-i18n="telemetry_efficiency">Efficiency</h3>
         <div class="stat-rows">
-          <div class="stat-row"><span>Time (Act/Plan)</span><span id="timeEffValue">0%</span></div>
-          <div class="stat-row"><span>Energy (Blocks/Hr)</span><span id="energyEffValue">0%</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_time_act_plan">Time (Act/Plan)</span><span id="timeEffValue">0%</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_energy_blocks_hr">Energy (Blocks/Hr)</span><span id="energyEffValue">0%</span></div>
         </div>
       </div>
       <div class="card stat-card" id="recoveryCard">
-        <h3>Recovery & Fatigue</h3>
+        <h3 data-i18n="telemetry_recovery_fatigue">Recovery & Fatigue</h3>
         <div class="stat-status">
           <span id="fatigueIndicator" class="stat-emoji">🟢</span>
           <span id="fatigueLabel" class="stat-status-label">Stable</span>
         </div>
-        <small id="fatigueNote" class="stat-note">Sustainability</small>
+        <small id="fatigueNote" class="stat-note" data-i18n="telemetry_sustainability">Sustainability</small>
       </div>
       <div class="card stat-card" id="cogLoadCard">
-        <h3>Cognitive Load</h3>
+        <h3 data-i18n="telemetry_cognitive_load">Cognitive Load</h3>
         <div class="stat-status">
           <span id="cogIndicator" class="stat-emoji">🔋</span>
           <span id="cogLabel" class="stat-status-label">Normal</span>
         </div>
-        <small id="cogNote" class="stat-note">OJT + Personal</small>
+        <small id="cogNote" class="stat-note" data-i18n="telemetry_ojt_personal">OJT + Personal</small>
       </div>
       <div class="card stat-card" id="momentumCard">
-        <h3>Momentum</h3>
+        <h3 data-i18n="telemetry_momentum">Momentum</h3>
         <div class="stat-rows">
-          <div class="stat-row"><span>Index</span><span id="momentumValue">0%</span></div>
-          <div class="stat-row"><span>Streak (≥8h)</span><span id="streakValue">0 days</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_index">Index</span><span id="momentumValue">0%</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_streak_8h">Streak (≥8h)</span><span id="streakValue">0 days</span></div>
         </div>
-        <p id="momentumStatus" class="stat-msg">Stability</p>
+        <p id="momentumStatus" class="stat-msg" data-i18n="telemetry_stability">Stability</p>
       </div>
     </div>
   </section>
 
   <!-- Main chart: trajectory -->
   <section class="telemetry-section">
-    <h2 class="section-title">Cumulative Progress vs Goal</h2>
+    <h2 class="section-title" data-i18n="telemetry_cumulative_progress_vs_goal">Cumulative Progress vs Goal</h2>
     <div class="card chart-card chart-card-wide">
       <div class="chart-wrap chart-tall">
         <canvas id="trajectoryChart"></canvas>
@@ -157,10 +181,10 @@
 
   <!-- Daily performance: delta + hour distribution + radar -->
   <section class="telemetry-section">
-    <h2 class="section-title">Day-of-Week Dynamics</h2>
+    <h2 class="section-title" data-i18n="telemetry_day_of_week_dynamics">Day-of-Week Dynamics</h2>
     <div class="telemetry-charts-row">
       <div class="card chart-card chart-card-wide chart-card-delta">
-        <h3>Session Delta (vs 8h)</h3>
+        <h3 data-i18n="telemetry_session_delta_vs_8h">Session Delta (vs 8h)</h3>
         <div class="chart-wrap chart-wrap-delta">
           <canvas id="deltaChart"></canvas>
         </div>
@@ -168,13 +192,13 @@
     </div>
     <div class="telemetry-charts-row telemetry-dynamics-secondary">
       <div class="card chart-card">
-        <h3>Hours Distribution</h3>
+        <h3 data-i18n="telemetry_hours_distribution">Hours Distribution</h3>
         <div class="chart-wrap chart-wrap-hours">
           <canvas id="hourDistChart"></canvas>
         </div>
       </div>
       <div class="card chart-card">
-        <h3>Day-of-Week Velocity</h3>
+        <h3 data-i18n="telemetry_day_of_week_velocity">Day-of-Week Velocity</h3>
         <div class="chart-wrap chart-wrap-velocity">
           <canvas id="dayVelocityRadar"></canvas>
         </div>
@@ -182,13 +206,23 @@
     </div>
   </section>
 
+  <!-- Weekly Effort breakdown -->
+  <section class="telemetry-section">
+    <h2 class="section-title" data-i18n="telemetry_weekly_effort_breakdown">Weekly Effort Breakdown</h2>
+    <div class="card chart-card chart-card-wide">
+      <div class="chart-wrap">
+        <canvas id="weeklyEffortChart"></canvas>
+      </div>
+    </div>
+  </section>
+
   <!-- Weekly trend (Refactored to Candlestick) -->
   <section class="telemetry-section">
     <div class="section-header-flex">
-      <h2 class="section-title" style="border:none; margin:0;">Weekly Delta Momentum</h2>
+      <h2 class="section-title" style="border:none; margin:0;" data-i18n="telemetry_weekly_delta_momentum">Weekly Delta Momentum</h2>
       <div class="ohlc-legend">
-        <div class="legend-item"><div class="level-box" style="background:var(--color-good)"></div> <span>Gained</span></div>
-        <div class="legend-item"><div class="level-box" style="background:var(--accent)"></div> <span>Lost</span></div>
+        <div class="legend-item"><div class="level-box" style="background:var(--color-good)"></div> <span data-i18n="telemetry_gained">Gained</span></div>
+        <div class="legend-item"><div class="level-box" style="background:var(--accent)"></div> <span data-i18n="telemetry_lost">Lost</span></div>
       </div>
     </div>
     <div class="card chart-card chart-card-wide">
@@ -198,24 +232,44 @@
     </div>
   </section>
 
+  <section class="telemetry-section">
+    <h2 class="section-title" data-i18n="telemetry_weekly_performance_matrix">Weekly Performance Matrix</h2>
+    <div class="card">
+        <table class="comparison-table" style="width:100%; border-collapse: collapse; font-size: 11px;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.05);">
+                    <th style="padding: 10px; text-align: left; color: var(--accent);" data-i18n="week">Week</th>
+                    <th style="padding: 10px; text-align: left; color: var(--accent);" data-i18n="telemetry_hrs_ojt">Hrs (OJT)</th>
+                    <th style="padding: 10px; text-align: left; color: var(--accent);" data-i18n="telemetry_hrs_pers">Hrs (Pers)</th>
+                    <th style="padding: 10px; text-align: left; color: var(--accent);" data-i18n="telemetry_gain_pct">Gain (%)</th>
+                    <th style="padding: 10px; text-align: left; color: var(--accent);" data-i18n="telemetry_eff_pct">Eff %</th>
+                </tr>
+            </thead>
+            <tbody id="telemetryWeeklyTableBody">
+                <!-- Injected via JS -->
+            </tbody>
+        </table>
+    </div>
+  </section>
+
   <!-- L2 & wellness -->
   <section class="telemetry-section">
-    <h2 class="section-title">L2 Telemetry & Wellness</h2>
+    <h2 class="section-title" data-i18n="telemetry_l2_wellness">L2 Telemetry & Wellness</h2>
     <div class="telemetry-charts-row telemetry-charts-two">
       <div class="card stat-card">
-        <h3>L2 Performance</h3>
+        <h3 data-i18n="telemetry_l2_performance">L2 Performance</h3>
         <div class="stat-rows">
-          <div class="stat-row"><span>Focus Score</span><span id="focusScore" class="stat-accent">0.0</span></div>
-          <div class="stat-row"><span>Commute use</span><span id="commuteEff">0%</span></div>
-          <div class="stat-row"><span>Deep work</span><span id="deepWorkScore">0.0</span></div>
-          <div class="stat-row"><span>Avg sleep</span><span id="avgSleep">0.0h</span></div>
-          <div class="stat-row"><span>Avg recovery</span><span id="avgRecovery">0.0h</span></div>
-          <div class="stat-row"><span>Avg identity</span><span id="avgIdentity">0.0 / 5</span></div>
-          <div class="stat-row"><span>Personal/OJT</span><span id="personalOjtRatio">0%</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_focus_score">Focus Score</span><span id="focusScore" class="stat-accent">0.0</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_commute_use">Commute use</span><span id="commuteEff">0%</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_deep_work">Deep work</span><span id="deepWorkScore">0.0</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_avg_sleep">Avg sleep</span><span id="avgSleep">0.0h</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_avg_recovery">Avg recovery</span><span id="avgRecovery">0.0h</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_avg_identity">Avg identity</span><span id="avgIdentity">0.0 / 5</span></div>
+          <div class="stat-row"><span data-i18n="telemetry_personal_ojt_ratio">Personal/OJT</span><span id="personalOjtRatio">0%</span></div>
         </div>
       </div>
       <div class="card chart-card">
-        <h3>Energy Zones</h3>
+        <h3 data-i18n="telemetry_energy_zones">Energy Zones</h3>
         <div class="chart-wrap">
           <canvas id="energyZoneChart"></canvas>
         </div>
@@ -225,7 +279,7 @@
     <!-- Identity chart placed within L2 group -->
     <div class="telemetry-charts-row">
       <div class="card chart-card chart-card-wide">
-        <h3>Identity Alignment</h3>
+        <h3 data-i18n="telemetry_identity_alignment_title">Identity Alignment</h3>
         <div class="chart-wrap chart-tall">
           <canvas id="identityChart"></canvas>
         </div>
@@ -233,10 +287,131 @@
     </div>
   </section>
 
+  <section class="telemetry-section">
+    <h2 class="section-title" data-i18n="telemetry_chart_formulas">Chart Formulas</h2>
+    <div class="card">
+      <style>
+        .formula-grid {
+          display: grid;
+          gap: 12px;
+        }
+        .formula-card {
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 12px;
+          background: var(--bg);
+        }
+        .formula-title {
+          margin: 0 0 8px 0;
+          color: var(--accent);
+          font-family: var(--font-heading);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-size: 0.88rem;
+        }
+        .formula-block {
+          display: block;
+          margin: 6px 0;
+          padding: 8px 10px;
+          border-radius: 6px;
+          border: 1px dashed var(--border);
+          background: rgba(0,0,0,0.16);
+          font-size: 0.96rem;
+          line-height: 1.55;
+          overflow-x: auto;
+          white-space: nowrap;
+          font-family: "Consolas", "Cascadia Mono", "Courier New", monospace;
+        }
+        .formula-vars {
+          margin: 8px 0 0 0;
+          padding-left: 16px;
+          font-size: 0.86rem;
+          line-height: 1.45;
+          opacity: 0.92;
+        }
+        .formula-vars li { margin: 2px 0; }
+      </style>
+
+      <div class="formula-grid">
+        <details class="formula-card" open>
+          <summary class="formula-title"><strong data-i18n="formula_cumulative_title">Cumulative Progress vs Goal</strong></summary>
+          <code class="formula-block">C_actual(t) = Σ hours_i</code>
+          <code class="formula-block">C_ideal(t) = workdays_elapsed × DAILY_TARGET_HOURS</code>
+          <code class="formula-block">C_proj(t+k) = C_actual(t) + (pace × k_workdays)</code>
+          <ul class="formula-vars">
+            <li><code>t</code>: <span data-i18n="formula_var_t">current date index in timeline</span></li>
+            <li><code>k</code>: <span data-i18n="formula_var_k">projected workdays ahead</span></li>
+            <li><code>hours_i</code>: <span data-i18n="formula_var_hours">hours on record i</span></li>
+            <li><code>pace</code>: <span data-i18n="formula_var_pace">selected/estimated daily pace (hours/day)</span></li>
+          </ul>
+        </details>
+        <details class="formula-card">
+          <summary class="formula-title"><strong data-i18n="formula_delta_title">Session Delta (vs 8h)</strong></summary>
+          <code class="formula-block">Δ_i = hours_i - 8</code>
+          <code class="formula-block">ΣΔ_t = Σ (hours_i - 8)</code>
+          <ul class="formula-vars">
+            <li><code>Δ_i</code>: <span data-i18n="formula_var_delta_i">daily over/under target for day i</span></li>
+            <li><code>ΣΔ_t</code>: <span data-i18n="formula_var_sum_delta">cumulative delta up to date t</span></li>
+            <li><code>8</code>: <span data-i18n="formula_var_baseline">baseline target used by the chart</span></li>
+          </ul>
+        </details>
+        <details class="formula-card">
+          <summary class="formula-title"><strong data-i18n="formula_radar_title">Day-of-Week Velocity (Radar)</strong></summary>
+          <code class="formula-block">avg_d = (Σ hours_on_d) / count_d</code>
+          <ul class="formula-vars">
+            <li><code>d</code>: <span data-i18n="formula_var_weekday">weekday bucket (Mon..Sat)</span></li>
+            <li><code>hours_on_d</code>: <span data-i18n="formula_var_hours_on_d">hours logged on weekday d</span></li>
+            <li><code>count_d</code>: <span data-i18n="formula_var_count_d">number of entries for weekday d</span></li>
+          </ul>
+        </details>
+        <details class="formula-card">
+          <summary class="formula-title"><strong data-i18n="formula_dist_title">Hours Distribution</strong></summary>
+          <code class="formula-block">bin_count(b) = number of records with hours ∈ b</code>
+          <ul class="formula-vars">
+            <li><code>b</code>: <span data-i18n="formula_var_interval">one interval in {intervals}</span></li>
+            <li><code>bin_count(b)</code>: <span data-i18n="formula_var_bin_count">records that fall within interval b</span></li>
+          </ul>
+        </details>
+        <details class="formula-card">
+          <summary class="formula-title"><strong data-i18n="formula_ohlc_title">Weekly Delta Momentum (Candlestick)</strong></summary>
+          <code class="formula-block">delta_i = hours_i - 8</code>
+          <code class="formula-block">open_w = first(delta_i), close_w = last(delta_i)</code>
+          <code class="formula-block">high_w = max(delta_i), low_w = min(delta_i)</code>
+          <ul class="formula-vars">
+            <li><code>w</code>: <span data-i18n="formula_var_week_bucket">selected week bucket</span></li>
+            <li><code>open_w / close_w</code>: <span data-i18n="formula_var_open_close">first/last delta of week w</span></li>
+            <li><code>high_w / low_w</code>: <span data-i18n="formula_var_high_low">highest/lowest delta in week w</span></li>
+          </ul>
+        </details>
+        <details class="formula-card">
+          <summary class="formula-title"><strong data-i18n="formula_identity_title">Identity Alignment</strong></summary>
+          <code class="formula-block">identity_avg_w = (Σ identityScore_i) / count_w</code>
+          <code class="formula-block">target = 4.0</code>
+          <ul class="formula-vars">
+            <li><code>identityScore_i</code>: <span data-i18n="formula_var_identity_score">identity score for entry i</span></li>
+            <li><code>count_w</code>: <span data-i18n="formula_var_count_w">entries in week w with valid identity score</span></li>
+            <li><code>target</code>: <span data-i18n="formula_var_guide_line">reference guide line (4.0)</span></li>
+          </ul>
+        </details>
+        <details class="formula-card">
+          <summary class="formula-title"><strong data-i18n="formula_energy_title">Energy Zones</strong></summary>
+          <code class="formula-block">Elite: hours ≥ 8 and personalHours ≥ 1</code>
+          <code class="formula-block">Overdrive: (hours + personalHours) &gt; 9</code>
+          <code class="formula-block">Solid: hours ≥ 8 | Survival: hours ≥ 6 | Recovery: otherwise</code>
+          <ul class="formula-vars">
+            <li><code>hours</code>: <span data-i18n="formula_var_ojt_hours">OJT hours for a day</span></li>
+            <li><code>personalHours</code>: <span data-i18n="formula_var_personal_hours">personal project hours for a day</span></li>
+            <li><span data-i18n="formula_var_zone_rule">Each record maps to one zone based on rule priority order</span></li>
+          </ul>
+        </details>
+      </div>
+    </div>
+  </section>
+
 
   <div id="loadingOverlay" class="loading-overlay" style="display: none;">
     <div class="loading-spinner"></div>
-    <p>Syncing telemetry</p>
+    <p data-i18n="telemetry_loading">Syncing telemetry</p>
   </div>
 </div>
 
@@ -247,7 +422,24 @@
 <script src="scripts/telemetry-charts.js"></script>
 <script src="scripts/telemetry-sim.js"></script>
 <script src="scripts/telemetry.js"></script>
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
+      window.DTRI18N.bootstrap();
+    }
+  });
+</script>
+<script>
+  // Wait for the script file to be fully parsed
+  window.addEventListener("load", () => {
+    if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
+      window.DTRI18N.bootstrap().then(() => {
+        console.log("[DTR-Systems] i18n Engine Active");
+      });
+    } else {
+      console.error("[DTR-Systems] i18n Script failed to initialize object.");
+    }
+  });
+</script>
 </body>
 </html>
-
-

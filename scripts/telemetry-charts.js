@@ -117,7 +117,7 @@ function renderTrajectoryChart(logs, customPace = null) {
 
     const lineAccent = boostColor(COLORS.accent, 0.2);
     const lineExcellent = boostColor(COLORS.excellent, 0.18);
-    const lineText = boostColor(COLORS.text, 0.12);
+    const lineText = boostColor(COLORS.aux || COLORS.text, 0.12);
 
     const series = buildTrajectorySeries({ logs, paceOverride: customPace });
     const labels = series.labels;
@@ -145,7 +145,7 @@ function renderTrajectoryChart(logs, customPace = null) {
             labels: labels,
             datasets: [
                 { 
-                    label: 'Actual Progress', 
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_trajectory_actual') : 'Actual Progress', 
                     data: actualCumulative, 
                     borderColor: lineAccent, 
                     backgroundColor: gradAccent, 
@@ -156,7 +156,7 @@ function renderTrajectoryChart(logs, customPace = null) {
                     spanGaps: false
                 },
                 { 
-                    label: 'Forecasted Projection', 
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_trajectory_projected') : 'Forecasted Projection', 
                     data: projectedCumulative, 
                     borderColor: lineExcellent, 
                     borderWidth: 2.5,
@@ -167,9 +167,9 @@ function renderTrajectoryChart(logs, customPace = null) {
                     spanGaps: true
                 },
                 { 
-                    label: `Ideal Target (Standard ${DAILY_TARGET_HOURS}h Daily)`, 
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_trajectory_ideal', { hours: DAILY_TARGET_HOURS }) : `Ideal Target (Standard ${DAILY_TARGET_HOURS}h Daily)`,
                     data: idealCumulative, 
-                    borderColor: lineText + '',
+                    borderColor: lineText,
                     borderWidth: 2,
                     borderDash: [5, 5], 
                     pointRadius: 0 
@@ -191,9 +191,19 @@ function renderTrajectoryChart(logs, customPace = null) {
                             const ideal = tooltipItems.find(i => i.datasetIndex === 2)?.parsed.y || 0;
                             const diff = ideal - actual;
                             if (actual === 0 && ideal === 0) return null;
-                            return diff > 0 
-                                ? `Deficit: ${diff.toFixed(1)}h behind` 
-                                : (diff < 0 ? `Surplus: ${Math.abs(diff).toFixed(1)}h ahead` : 'On Track');
+                            const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+                            const deficitLabel = t ? t('chart_deficit') : 'Deficit: ';
+                            const surplusLabel = t ? t('chart_surplus') : 'Surplus: ';
+                            const onTrackLabel = t ? t('status_on_track') : 'On Track';
+                            const hours = Math.abs(diff).toFixed(1);
+
+                            if (diff > 0) {
+                                return t ? t('chart_behind_tooltip', { hours }) : `${deficitLabel}${hours}h behind`;
+                            } else if (diff < 0) {
+                                return t ? t('chart_ahead_tooltip', { hours }) : `${surplusLabel}${hours}h ahead`;
+                            } else {
+                                return onTrackLabel;
+                            }
                         }
                     }
                 }
@@ -214,25 +224,70 @@ function renderEnergyZoneChart(logs) {
     const canvas = document.getElementById('energyZoneChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    const detailsEl = document.getElementById('energyZoneDateDetails');
 
+    const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+    const zoneTranslationMap = {
+        "Elite": t ? t("chart_energy_elite") : "Elite",
+        "Overdrive": t ? t("chart_energy_overdrive") : "Overdrive",
+        "Solid": t ? t("chart_energy_solid") : "Solid",
+        "Survival": t ? t("chart_energy_survival") : "Survival",
+        "Recovery": t ? t("chart_energy_recovery") : "Recovery"
+    };
     const zoneOrder = ["Recovery", "Survival", "Solid", "Overdrive", "Elite"];
     const zones = { Elite: 0, Overdrive: 0, Solid: 0, Survival: 0, Recovery: 0 };
+    const zoneDates = { Elite: [], Overdrive: [], Solid: [], Survival: [], Recovery: [] };
+
+    // Build a set of all logged date keys for gap detection
+    const loggedDateKeys = new Set();
+    logs.forEach(r => {
+        const dateKey = toGmt8DateKey(r.date) || r.date;
+        if (dateKey) loggedDateKeys.add(dateKey);
+    });
+
+    // Count missing dates between OJT start and last log as Recovery
+    if (loggedDateKeys.size > 0) {
+        const ojtStartKey = toGmt8DateKey(OJT_START || getCurrentOjtStartDate());
+        const sortedKeys = [...loggedDateKeys].sort();
+        const lastKey = sortedKeys[sortedKeys.length - 1];
+        const startDate = parseDateKeyGmt8(ojtStartKey);
+        const endDate = parseDateKeyGmt8(lastKey);
+        if (startDate && endDate) {
+            for (let d = new Date(startDate.getTime()); d <= endDate; d = addDaysGmt8(d, 1)) {
+                const dk = toGmt8DateKey(d);
+                if (dk && !loggedDateKeys.has(dk) && isWorkdayGmt8(d)) {
+                    zones["Recovery"]++;
+                    zoneDates["Recovery"].push(dk + " ⟵ gap");
+                }
+            }
+        }
+    }
 
     logs.forEach(r => {
         const total = r.hours + (r.personalHours || 0);
-        if (r.hours >= 8 && (r.personalHours || 0) >= 1) zones["Elite"]++;
-        else if (total > 9) zones["Overdrive"]++;
-        else if (r.hours >= 8) zones["Solid"]++;
-        else if (r.hours >= 6) zones["Survival"]++;
-        else zones["Recovery"]++;
+        const dateKey = toGmt8DateKey(r.date) || r.date;
+        let zone = "Recovery";
+        if (r.hours >= 8 && (r.personalHours || 0) >= 1) zone = "Elite";
+        else if (total > 9) zone = "Overdrive";
+        else if (r.hours >= 8) zone = "Solid";
+        else if (r.hours >= 6) zone = "Survival";
+        zones[zone]++;
+        if (dateKey) zoneDates[zone].push(dateKey);
     });
+
+    const noDatesLabel = t ? t("chart_no_dates_window") : "No dates in current window.";
+    const zoneClickText = t ? t("chart_click_zone_bar") : "Click a zone bar to view specific dates.";
+
+    if (detailsEl) {
+        detailsEl.innerHTML = zoneClickText;
+    }
 
     charts.energy = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: zoneOrder,
+            labels: zoneOrder.map(z => zoneTranslationMap[z] || z),
             datasets: [{
-                label: 'Sessions',
+                label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_energy_sessions') : 'Sessions',
                 data: zoneOrder.map(z => zones[z]),
                 backgroundColor: [withAlpha(COLORS.text, 0.6), COLORS.warning, COLORS.good, COLORS.accent, COLORS.excellent],
                 borderRadius: 4
@@ -242,6 +297,24 @@ function renderEnergyZoneChart(logs) {
             indexAxis: 'y', 
             responsive: true, 
             maintainAspectRatio: false,
+            onClick: (event, elements) => {
+                if (!detailsEl) return;
+                if (!elements || !elements.length) return;
+                const idx = elements[0].index;
+                const zone = zoneOrder[idx];
+                const dates = zoneDates[zone] || [];
+                if (!dates.length) {
+                    detailsEl.innerHTML = `<strong>${zone}:</strong> ${noDatesLabel}`;
+                    return;
+                }
+                const items = dates.map((d) => `<li>${d}</li>`).join("");
+                detailsEl.innerHTML = `
+                    <strong>${zone} (${dates.length})</strong>
+                    <ul style="margin:6px 0 0 16px; padding:0;">
+                        ${items}
+                    </ul>
+                `;
+            },
             plugins: { legend: { display: false } },
             scales: { x: { beginAtZero: true, grid: { color: COLORS.grid } } }
         }
@@ -252,6 +325,7 @@ function renderIdentityChart(logs) {
     const canvas = document.getElementById('identityChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
 
     const weeklyIdentity = {};
     logs.forEach((r) => {
@@ -264,13 +338,16 @@ function renderIdentityChart(logs) {
     });
 
     const sortedWeeks = Object.keys(weeklyIdentity).map(Number).sort((a, b) => a - b);
+    const noDataLabel = t ? t("chart_id_no_data") : "No Data";
+    const alignScoreLabel = t ? t("chart_id_alignment") : "Alignment Score";
+
     if (!sortedWeeks.length) {
         charts.identity = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: ['No Data'],
+                labels: [(window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_id_no_data') : noDataLabel],
                 datasets: [{
-                    label: 'Alignment Score',
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_id_alignment') : alignScoreLabel,
                     data: [0],
                     backgroundColor: withAlpha(COLORS.grid, 0.35)
                 }]
@@ -285,7 +362,7 @@ function renderIdentityChart(logs) {
         return;
     }
 
-    const labels = sortedWeeks.map((w) => `Week ${w}`);
+    const labels = sortedWeeks.map((w) => (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t("week_label", { week: w }) : `Week ${w}`);
     const avgScores = sortedWeeks.map((w) => weeklyIdentity[w].sum / weeklyIdentity[w].count);
     const counts = sortedWeeks.map((w) => weeklyIdentity[w].count);
     const targetLine = sortedWeeks.map(() => 4);
@@ -297,6 +374,10 @@ function renderIdentityChart(logs) {
         text: boostColor(COLORS.text, 0.06)
     };
 
+    const weeklyAvgLabel = t ? t("chart_id_weekly_avg") : "Weekly Avg";
+    const targetLabel = t ? t("chart_id_target") : "Target (4.0)";
+    const entryCountLabel = t ? t("chart_id_entry_count") : "Entry Count";
+
     charts.identity = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -304,7 +385,7 @@ function renderIdentityChart(logs) {
             datasets: [
                 {
                     type: 'bar',
-                    label: 'Weekly Avg',
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_id_weekly_avg') : weeklyAvgLabel,
                     data: avgScores,
                     backgroundColor: avgScores.map((score) => {
                         if (score >= 4) return withAlpha(idTheme.excellent, 0.67);
@@ -325,7 +406,7 @@ function renderIdentityChart(logs) {
                 },
                 {
                     type: 'line',
-                    label: 'Target (4.0)',
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_id_target') : targetLabel,
                     data: targetLine,
                     borderColor: withAlpha(idTheme.text, 0.53),
                     borderDash: [5, 3],
@@ -336,11 +417,11 @@ function renderIdentityChart(logs) {
                 },
                 {
                     type: 'line',
-                    label: 'Entry Count',
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_id_entry_count') : entryCountLabel,
                     data: counts,
-                    borderColor: idTheme.accent,
-                    backgroundColor: withAlpha(idTheme.accent, 0.2),
-                    pointBackgroundColor: idTheme.accent,
+                    borderColor: COLORS.aux || idTheme.accent,
+                    backgroundColor: withAlpha(COLORS.aux || idTheme.accent, 0.2),
+                    pointBackgroundColor: COLORS.aux || idTheme.accent,
                     pointRadius: 3,
                     pointBorderColor: boostColor(COLORS.text, 0.1),
                     pointBorderWidth: 1,
@@ -364,7 +445,7 @@ function renderIdentityChart(logs) {
                         afterLabel: (context) => {
                             if (context.dataset.type === 'bar') {
                                 const idx = context.dataIndex;
-                                return `Entries: ${counts[idx]}`;
+                                return `${entryCountLabel}: ${counts[idx]}`;
                             }
                             return '';
                         }
@@ -381,14 +462,14 @@ function renderIdentityChart(logs) {
                     max: 5,
                     ticks: { stepSize: 1, callback: value => value.toFixed(1) },
                     grid: { color: COLORS.grid },
-                    title: { display: true, text: 'Alignment Score (1-5)', font: { size: 11 } }
+                    title: { display: true, text: alignScoreLabel, font: { size: 11 } }
                 },
                 y1: {
                     beginAtZero: true,
                     position: 'right',
                     grid: { drawOnChartArea: false },
                     ticks: { precision: 0 },
-                    title: { display: true, text: 'Entry Count', font: { size: 11 } }
+                    title: { display: true, text: entryCountLabel, font: { size: 11 } }
                 }
             }
         }
@@ -402,13 +483,23 @@ function renderCandlestickChart(logs) {
 
     const weeklyOHLC = {};
     const sorted = [...logs].sort((a,b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+
+    const tCandle = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+    const wickLabel = tCandle ? tCandle('chart_ohlc_wick') : "Wick";
+    const bodyLabel = tCandle ? tCandle('chart_ohlc_body') : "Body";
+    const highLabel = tCandle ? tCandle('chart_ohlc_high') : "High";
+    const openLabel = tCandle ? tCandle('chart_ohlc_open') : "Open";
+    const closeLabel = tCandle ? tCandle('chart_ohlc_close') : "Close";
+    const lowLabel = tCandle ? tCandle('chart_ohlc_low') : "Low";
 
     sorted.forEach(r => {
         const w = getWeekNumber(r.date);
         const delta = r.hours - 8;
         
         if (!weeklyOHLC[w]) {
-            weeklyOHLC[w] = { week: `Week ${w}`, open: delta, close: delta, high: delta, low: delta };
+            const label = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t("week_label", { week: w }) : `Week ${w}`;
+            weeklyOHLC[w] = { week: label, open: delta, close: delta, high: delta, low: delta };
         } else {
             weeklyOHLC[w].close = delta; 
             weeklyOHLC[w].high = Math.max(weeklyOHLC[w].high, delta);
@@ -429,7 +520,7 @@ function renderCandlestickChart(logs) {
             labels: weeks.map(w => w.week),
             datasets: [
                 {
-                    label: 'Wick',
+                    label: wickLabel,
                     data: weeks.map(w => [w.low, w.high]),
                     backgroundColor: weeks.map(w => w.close >= w.open ? withAlpha(COLORS.good, 0.53) : withAlpha(COLORS.accent, 0.53)),
                     borderColor: 'transparent',
@@ -438,7 +529,7 @@ function renderCandlestickChart(logs) {
                     order: 2
                 },
                 {
-                    label: 'Body',
+                    label: bodyLabel,
                     data: weeks.map(w => [Math.min(w.open, w.close), Math.max(w.open, w.close)]),
                     backgroundColor: weeks.map(w => w.close >= w.open ? COLORS.good : COLORS.accent),
                     borderColor: weeks.map(w => w.close >= w.open ? COLORS.good : COLORS.accent),
@@ -459,10 +550,10 @@ function renderCandlestickChart(logs) {
                         label: (context) => {
                             const d = weeks[context.dataIndex];
                             return [
-                                `High:  ${d.high > 0 ? '+' : ''}${d.high.toFixed(1)}h`,
-                                `Open:  ${d.open > 0 ? '+' : ''}${d.open.toFixed(1)}h`,
-                                `Close: ${d.close > 0 ? '+' : ''}${d.close.toFixed(1)}h`,
-                                `Low:   ${d.low > 0 ? '+' : ''}${d.low.toFixed(1)}h`
+                                `${highLabel}:  ${d.high > 0 ? '+' : ''}${d.high.toFixed(1)}h`,
+                                `${openLabel}:  ${d.open > 0 ? '+' : ''}${d.open.toFixed(1)}h`,
+                                `${closeLabel}: ${d.close > 0 ? '+' : ''}${d.close.toFixed(1)}h`,
+                                `${lowLabel}:   ${d.low > 0 ? '+' : ''}${d.low.toFixed(1)}h`
                             ];
                         }
                     }
@@ -490,13 +581,19 @@ function renderContextualCharts(logs, selectedWeek) {
             return cumulativeDelta;
         });
         
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        const dailyDeltaLabel = t ? t('chart_daily_delta') : "Daily Delta";
+        const cumulativeDeltaLabel = t ? t('chart_cumulative_delta') : "Cumulative Delta";
+        const dailyDeltaHoursLabel = t ? t('chart_daily_delta_label') : "Daily Delta (hours)";
+        const cumulativeHoursLabel = t ? t('chart_delta_cumulative_label') : "Cumulative (hours)";
+
         charts.delta = new Chart(deltaCanvas.getContext('2d'), {
             type: 'bar',
             data: {
                 labels: logs.map(r => r.date),
                 datasets: [
                     {
-                        label: 'Daily Delta',
+                        label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_delta_daily') : dailyDeltaLabel,
                         data: deltas,
                         backgroundColor: deltas.map(d => d >= 0 ? withAlpha(COLORS.good, 0.53) : withAlpha(COLORS.accent, 0.53)),
                         borderColor: deltas.map(d => d >= 0 ? COLORS.good : COLORS.accent),
@@ -506,13 +603,13 @@ function renderContextualCharts(logs, selectedWeek) {
                         order: 2
                     },
                     {
-                        label: 'Cumulative Delta',
+                        label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_delta_cumulative') : cumulativeDeltaLabel,
                         type: 'line',
                         data: cumulativeDeltas,
-                        borderColor: boostColor(COLORS.accent, 0.22),
+                        borderColor: COLORS.aux || boostColor(COLORS.accent, 0.22),
                         backgroundColor: 'transparent',
                         borderWidth: 3,
-                        pointBackgroundColor: boostColor(COLORS.accent, 0.22),
+                        pointBackgroundColor: COLORS.aux || boostColor(COLORS.accent, 0.22),
                         pointBorderColor: boostColor(COLORS.text, 0.1),
                         pointBorderWidth: 1,
                         pointRadius: 3,
@@ -535,12 +632,12 @@ function renderContextualCharts(logs, selectedWeek) {
                     tooltip: {
                         callbacks: {
                             label: (context) => {
-                                if (context.dataset.label === 'Daily Delta') {
+                                if (context.dataset.label === dailyDeltaLabel) {
                                     const val = context.parsed.y;
-                                    return `Daily: ${val > 0 ? '+' : ''}${val.toFixed(1)}h`;
+                                    return `${dailyDeltaLabel}: ${val > 0 ? '+' : ''}${val.toFixed(1)}h`;
                                 } else {
                                     const val = context.parsed.y;
-                                    return `Cumulative: ${val > 0 ? '+' : ''}${val.toFixed(1)}h`;
+                                    return `${cumulativeDeltaLabel}: ${val > 0 ? '+' : ''}${val.toFixed(1)}h`;
                                 }
                             }
                         }
@@ -551,14 +648,14 @@ function renderContextualCharts(logs, selectedWeek) {
                         type: 'linear',
                         position: 'left',
                         grid: { color: COLORS.grid },
-                        title: { display: true, text: 'Daily Delta (hours)', font: { size: 10 } },
+                        title: { display: true, text: dailyDeltaHoursLabel, font: { size: 10 } },
                         ticks: { callback: value => (value > 0 ? '+' : '') + value + 'h' }
                     },
                     y1: {
                         type: 'linear',
                         position: 'right',
                         grid: { drawOnChartArea: false },
-                        title: { display: true, text: 'Cumulative (hours)', font: { size: 10 } },
+                        title: { display: true, text: cumulativeHoursLabel, font: { size: 10 } },
                         ticks: { callback: value => (value > 0 ? '+' : '') + value + 'h' }
                     },
                     x: { display: true }
@@ -566,7 +663,7 @@ function renderContextualCharts(logs, selectedWeek) {
             }
         });
     }
-    renderCandlestickChart(allLogs);
+    renderCandlestickChart(logs);
 }
 
 function renderRadarChart(logs) {
@@ -574,7 +671,12 @@ function renderRadarChart(logs) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const tRadar = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+    const days = tRadar 
+        ? [tRadar('chart_radar_mon'), tRadar('chart_radar_tue'), tRadar('chart_radar_wed'), tRadar('chart_radar_thu'), tRadar('chart_radar_fri'), tRadar('chart_radar_sat')]
+        : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; 
+    const avgHoursLabel = tRadar ? tRadar('chart_radar_avg_hours') : "Avg Hours";
+
     const dayAverages = [0, 0, 0, 0, 0, 0];
     const dayCounts = [0, 0, 0, 0, 0, 0];
 
@@ -595,12 +697,12 @@ function renderRadarChart(logs) {
         data: {
             labels: days,
             datasets: [{
-                label: 'Avg Hours',
+                label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_radar_avg_hours') : 'Avg Hours',
                 data: data,
-                borderColor: boostColor(COLORS.accent, 0.22),
-                backgroundColor: withAlpha(boostColor(COLORS.accent, 0.22), 0.12),
+                borderColor: COLORS.aux || boostColor(COLORS.accent, 0.22),
+                backgroundColor: withAlpha(COLORS.aux || boostColor(COLORS.accent, 0.22), 0.12),
                 borderWidth: 3,
-                pointBackgroundColor: boostColor(COLORS.accent, 0.24),
+                pointBackgroundColor: COLORS.aux || boostColor(COLORS.accent, 0.24),
                 pointRadius: 3
             }]
         },
@@ -652,18 +754,83 @@ function renderHourDistChart(logs) {
                     COLORS.warning,
                     COLORS.accent,
                     COLORS.good,
-                    COLORS.excellent
+                    COLORS.aux || COLORS.excellent
                 ],
-                borderWidth: 1,
-                borderColor: COLORS.grid
+                borderWidth: 0,
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '70%',
             plugins: {
-                legend: { position: 'right', labels: { color: COLORS.text, boxWidth: 12, font: { size: 10 } } }
+                legend: {
+                    position: 'right',
+                    labels: { color: COLORS.text, font: { size: 11 }, padding: 15 }
+                }
+            },
+            cutout: '70%',
+            spacing: 2
+        }
+    });
+}
+
+function renderWeeklyEffortChart(logs) {
+    const canvas = document.getElementById('weeklyEffortChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const weeklyData = {};
+    logs.forEach(r => {
+        const w = getWeekNumber(r.date);
+        if (!weeklyData[w]) weeklyData[w] = { ojt: 0, personal: 0 };
+        weeklyData[w].ojt += r.hours;
+        weeklyData[w].personal += (r.personalHours || 0);
+    });
+
+    const sortedWeeks = Object.keys(weeklyData).map(Number).sort((a,b) => a - b);
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+    const labels = sortedWeeks.map(w => (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t("week_label", { week: w }) : `Week ${w}`);
+    const ojtHours = sortedWeeks.map(w => weeklyData[w].ojt);
+    const personalHours = sortedWeeks.map(w => weeklyData[w].personal);
+
+    charts.weeklyEffort = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_effort_ojt') : 'OJT Hours',
+                    data: ojtHours,
+                    backgroundColor: COLORS.accent,
+                    borderRadius: 4
+                },
+                {
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_effort_personal') : 'Personal Hours',
+                    data: personalHours,
+                    backgroundColor: COLORS.aux || COLORS.excellent,
+                    borderRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { color: COLORS.text, font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        footer: (tooltipItems) => {
+                            const total = tooltipItems.reduce((s, i) => s + i.parsed.y, 0);
+                            const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+                            return t ? t('chart_effort_total', { hours: total.toFixed(1) }) : `Total Effort: ${total.toFixed(1)}h`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: { stacked: true, grid: { color: COLORS.grid }, title: { display: true, text: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('hours_worked') : 'Hours', color: COLORS.text } }
             }
         }
     });

@@ -6,13 +6,15 @@
 function renderDailyGraph(records = dailyRecords) {
     const container = document.getElementById("githubGraph");
     const labelsContainer = document.getElementById("monthLabels");
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
     if (!container) return;
 
     container.innerHTML = "";
     if (labelsContainer) labelsContainer.innerHTML = "";
 
     if (!records || records.length === 0) {
-        container.innerHTML = "<p class='empty-msg'>No records to visualize.</p>";
+        const emptyText = t ? t("no_records_to_visualize") : "No records to visualize.";
+        container.innerHTML = `<p class='empty-msg'>${emptyText}</p>`;
         return;
     }
 
@@ -21,7 +23,8 @@ function renderDailyGraph(records = dailyRecords) {
         .map(r => parseDateKeyGmt8(toGmt8DateKey(r.date)))
         .filter(Boolean);
     if (!dates.length) {
-        container.innerHTML = "<p class='empty-msg'>No valid dated records to visualize.</p>";
+        const emptyText = t ? t("no_valid_dated_records") : "No valid dated records to visualize.";
+        container.innerHTML = `<p class='empty-msg'>${emptyText}</p>`;
         return;
     }
     const today = nowGmt8StartOfDay();
