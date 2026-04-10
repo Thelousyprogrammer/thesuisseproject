@@ -329,7 +329,7 @@
 /* Force body and all text elements to Cadillac Gothic Wide */
 [data-theme="cadillac"] body,
 [data-theme="cadillac"] label,
-[data-theme="cadillac"] span,
+[data-theme="cadillac"] span:not(.material-symbols-outlined),
 [data-theme="cadillac"] p,
 [data-theme="cadillac"] .subtitle,
 [data-theme="cadillac"] button:not([class*="btn-theme-"]),
@@ -338,6 +338,13 @@
 [data-theme="cadillac"] select {
     font-family: var(--font-body) !important;
     font-weight: 400;
+}
+
+/* Preserve icon font for Material Symbols in Cadillac theme */
+[data-theme="cadillac"] .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined' !important;
+    font-weight: normal !important;
+    font-style: normal !important;
 }
 
 /* High Contrast for readability on cards */
@@ -666,7 +673,7 @@
 
 [data-theme="ferrari"] body,
 [data-theme="ferrari"] label,
-[data-theme="ferrari"] span,
+[data-theme="ferrari"] span:not(.material-symbols-outlined),
 [data-theme="ferrari"] p,
 [data-theme="ferrari"] .subtitle,
 [data-theme="ferrari"] button:not([class*="btn-theme-"]),
@@ -675,6 +682,13 @@
 [data-theme="ferrari"] select {
     font-family: var(--font-body) !important;
     color: var(--ferrari-white);
+}
+
+/* Preserve icon font for Material Symbols in Ferrari theme */
+[data-theme="ferrari"] .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined' !important;
+    font-weight: normal !important;
+    font-style: normal !important;
 }
 
 /* Ferrari Buttons */
