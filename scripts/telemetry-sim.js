@@ -97,7 +97,8 @@ function toggleSimulation() {
     const card = document.querySelector(".sim-card");
 
     if (isSimulating) {
-        btn.innerText = "Exit Sim Mode";
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        btn.innerText = t ? t("simulator.telemetry_exit_sim_mode") : "Exit Sim Mode";
         btn.classList.replace("btn-dim", "btn-accent");
         controls.style.display = "block";
         resetBtn.style.display = "inline-block";
@@ -110,7 +111,8 @@ function toggleSimulation() {
         if (simHoursInput) simHoursInput.addEventListener("input", previewSimulation);
         if (simDaysInput) simDaysInput.addEventListener("input", previewSimulation);
     } else {
-        btn.innerText = "Enter Sim Mode";
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        btn.innerText = t ? t("simulator.telemetry_enter_sim_mode") : "Enter Sim Mode";
         btn.classList.replace("btn-accent", "btn-dim");
         controls.style.display = "none";
         resetBtn.style.display = "none";
@@ -197,7 +199,9 @@ function runSimulation() {
     // Add visual feedback
     const note = document.querySelector(".sim-note");
     if (note) {
-        note.innerText = `Simulated: Added ${simDaysToAdd} days @ ${simHours}h/day. Cumulative: ${allLogs.reduce((s,l)=>s+l.hours,0).toFixed(1)}h`;
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        const total = allLogs.reduce((s,l)=>s+l.hours,0).toFixed(1);
+        note.innerText = t ? t("simulator.telemetry_sim_success_msg", { days: simDaysToAdd, hours: simHours, total: total }) : `Simulated: Added ${simDaysToAdd} days @ ${simHours}h/day. Cumulative: ${total}h`;
         note.style.color = COLORS.excellent;
     }
 }
@@ -208,7 +212,17 @@ function resetTelemetry() {
     
     const note = document.querySelector(".sim-note");
     if (note) {
-        note.innerText = "Note: Simulated data is temporary and won't affect your real DTR records unless synced.";
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        note.innerText = t ? t("simulator.telemetry_sim_note") : "Note: Simulated data is temporary and won't affect your real DTR records unless synced.";
         note.style.color = "";
     }
 }
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window._getSimStartDate = window._getSimStartDate || _getSimStartDate; }
+if(typeof window !== "undefined") { window.toggleSimStartDate = window.toggleSimStartDate || toggleSimStartDate; }
+if(typeof window !== "undefined") { window._buildSimPreviewLogs = window._buildSimPreviewLogs || _buildSimPreviewLogs; }
+if(typeof window !== "undefined") { window.previewSimulation = window.previewSimulation || previewSimulation; }
+if(typeof window !== "undefined") { window.toggleSimulation = window.toggleSimulation || toggleSimulation; }
+if(typeof window !== "undefined") { window.updateSimTrackerUI = window.updateSimTrackerUI || updateSimTrackerUI; }
+if(typeof window !== "undefined") { window.runSimulation = window.runSimulation || runSimulation; }
+if(typeof window !== "undefined") { window.resetTelemetry = window.resetTelemetry || resetTelemetry; }

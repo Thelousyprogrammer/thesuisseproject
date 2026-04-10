@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title data-i18n="week_comparison_title">Week Comparison | DTR Telemetry</title>
+    <title data-i18n="week_comparison.week_comparison_title">Week Comparison | DTR Telemetry</title>
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/telemetry.css">
     <link rel="stylesheet" href="css/theme.css">
@@ -101,11 +101,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="scripts/dtr-core.js"></script>
-<script src="scripts/dtr-storage.js"></script>
+<script type="module" src="scripts/dtr-core.js"></script>
+<script type="module" src="scripts/dtr-storage.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/dist/index.min.js"></script>
-<script src="scripts/dtr-i18n.js"></script>
-<script src="scripts/week-comparison.js"></script>
+<script type="module" src="scripts/dtr-i18n.js"></script>
+<script type="module" src="scripts/week-comparison.js"></script>
 <script>
     if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
       window.DTRI18N.bootstrap();

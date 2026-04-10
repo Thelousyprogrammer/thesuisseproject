@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "smol-toml": "^1.6.1"
+    "smol-toml": "^1.6.1",
+    "jsdom": "^28.1.0"
   }
 }

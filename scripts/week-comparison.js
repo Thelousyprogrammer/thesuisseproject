@@ -141,3 +141,8 @@ function renderWeekComparison(logs) {
     document.getElementById("grandTotalHours").innerText = totalHours.toFixed(1) + "h";
     document.getElementById("grandTotalPersonal").innerText = totalPersonal.toFixed(1) + "h";
 }
+
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.fetchTelemetryData = window.fetchTelemetryData || fetchTelemetryData; }
+if(typeof window !== "undefined") { window.getThemeColors = window.getThemeColors || getThemeColors; }
+if(typeof window !== "undefined") { window.renderWeekComparison = window.renderWeekComparison || renderWeekComparison; }

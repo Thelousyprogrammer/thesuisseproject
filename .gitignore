@@ -18,4 +18,10 @@ Thumbs.db
 
 # Log files
 *.log
-npm-debug.log*
+npm-debug.log*logs
+*.log
+
+# Ignore Files
+node_modules/
+.VSCodeCounter
+.vscode

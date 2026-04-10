@@ -1,4 +1,4 @@
-﻿/**
+/**
  * DTR CORE MODULE
  * Configuration, Models, and Fundamental Utilities
  */
@@ -19,7 +19,6 @@ const DTR_COLORS = {
     aux: "var(--chart-aux)"
 };
 
-let dailyRecords = []; // Global state for the DTR app
 let editingIndex = null;
 let currentSortMode = "date-asc";
 let currentReflectionViewMode = "all";
@@ -372,7 +371,7 @@ function getTimelineWeekDayLabel(date, reference = OJT_START) {
 }
 
 function getTotalHours() {
-    return dailyRecords.reduce((sum, r) => sum + r.hours, 0);
+    return Store.getRecords().reduce((sum, r) => sum + r.hours, 0);
 }
 
 function getOverallDelta() {
@@ -380,7 +379,7 @@ function getOverallDelta() {
 }
 
 function getWeekHours(weekNumber) {
-    return dailyRecords
+    return Store.getRecords()
         .filter(r => getWeekNumber(r.date) === weekNumber)
         .reduce((sum, r) => sum + r.hours, 0);
 }
@@ -426,19 +425,29 @@ function setTheme(themeName, options = {}) {
     console.log("Theme synced:", fallbackTheme);
 }
 
-// Inside dtr-core.js
 function syncF1LightToggleLabel() {
-    const btn = document.getElementById('telemetryF1LightToggleBtn');
-    if (!btn) return;
+    const btns = [
+        document.getElementById('f1LightToggleBtn'),
+        document.getElementById('telemetryF1LightToggleBtn')
+    ];
 
-    // Check if i18n is ready and the function exists
-    const isI18nReady = window.DTRI18N && typeof window.DTRI18N.t === 'function';
-    
-    // Use the translation if ready, otherwise use a hardcoded default
-    const isLightOn = document.documentElement.getAttribute('data-f1-light') === 'on';
-    const labelKey = isLightOn ? 'themes.light_on' : 'themes.light_off';
-    
-    btn.textContent = isI18nReady ? window.DTRI18N.t(labelKey) : (isLightOn ? "Light: On" : "Light: Off");
+    const activeTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === "function")
+        ? window.ThemeSync.getLocalTheme()
+        : (localStorage.getItem("user-theme") || "f1");
+
+    const isLightOn = activeTheme.includes("light");
+    const iconName = isLightOn ? 'dark_mode' : 'light_mode';
+
+    btns.forEach(btn => {
+        if (!btn) return;
+        const iconSpan = btn.querySelector('.material-symbols-outlined');
+        if (iconSpan) {
+            iconSpan.textContent = iconName;
+        } else {
+            // Fallback injection if the HTML wasn't updated manually
+            btn.innerHTML = `<span class="material-symbols-outlined">${iconName}</span>`;
+        }
+    });
 }
 
 function toggleF1LightMode() {
@@ -457,6 +466,7 @@ function toggleF1LightMode() {
 function updateFavicon(themeName) {
     const map = {
         'f1': 'favicons/F1Favicon32.png',
+        'f1-light': 'favicons/F1Favicon32.png',
         'f1-light': 'favicons/F1Favicon32.png',
         'cadillac': 'favicons/CaddyFavicon32.png',
         'apx': 'favicons/APXFavicon32.png',
@@ -494,7 +504,7 @@ function getIdentityAlignmentLabel(score) {
     return map[parseInt(score, 10)] || map[0];
 }
 
-function normalizeForecastLogs(logs = dailyRecords) {
+function normalizeForecastLogs(logs = Store.getRecords()) {
     const normalized = [];
     (logs || []).forEach((r) => {
         const dateKey = toGmt8DateKey(r && r.date);
@@ -506,7 +516,7 @@ function normalizeForecastLogs(logs = dailyRecords) {
 }
 
 function calculateForecastUnified({
-    logs = dailyRecords,
+    logs = Store.getRecords(),
     paceOverride = null,
     startDate = OJT_START,
     deadlineDate = null,
@@ -584,7 +594,7 @@ function calculateForecastUnified({
     };
 }
 
-function buildTrajectorySeries({ logs = dailyRecords, paceOverride = null, startDate = OJT_START, deadlineDate = null } = {}) {
+function buildTrajectorySeries({ logs = Store.getRecords(), paceOverride = null, startDate = OJT_START, deadlineDate = null } = {}) {
     const effectiveDeadline = deadlineDate || getCurrentSemesterEndDate();
     const normalizedLogs = normalizeForecastLogs(logs);
     const forecast = calculateForecastUnified({ logs: normalizedLogs, paceOverride, startDate, deadlineDate: effectiveDeadline });
@@ -643,7 +653,73 @@ function buildTrajectorySeries({ logs = dailyRecords, paceOverride = null, start
     };
 }
 
-function calculateForecast(logs = dailyRecords, overridePace = null) {
+function calculateForecast(logs = Store.getRecords(), overridePace = null) {
     return calculateForecastUnified({ logs, paceOverride: overridePace });
 }
 
+
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.pad2 = window.pad2 || pad2; }
+if(typeof window !== "undefined") { window.warnInvalidDateInput = window.warnInvalidDateInput || warnInvalidDateInput; }
+if(typeof window !== "undefined") { window.toGmt8DateKey = window.toGmt8DateKey || toGmt8DateKey; }
+if(typeof window !== "undefined") { window.getOjtSettings = window.getOjtSettings || getOjtSettings; }
+if(typeof window !== "undefined") { window.saveOjtSettings = window.saveOjtSettings || saveOjtSettings; }
+if(typeof window !== "undefined") { window.getCurrentOjtStartDate = window.getCurrentOjtStartDate || getCurrentOjtStartDate; }
+if(typeof window !== "undefined") { window.getKnownTimeZoneIds = window.getKnownTimeZoneIds || getKnownTimeZoneIds; }
+if(typeof window !== "undefined") { window.getTimeZoneOffsetMinutes = window.getTimeZoneOffsetMinutes || getTimeZoneOffsetMinutes; }
+if(typeof window !== "undefined") { window.formatUtcOffset = window.formatUtcOffset || formatUtcOffset; }
+if(typeof window !== "undefined") { window.formatGmtOffset = window.formatGmtOffset || formatGmtOffset; }
+if(typeof window !== "undefined") { window.buildTimeZoneDisplayLabel = window.buildTimeZoneDisplayLabel || buildTimeZoneDisplayLabel; }
+if(typeof window !== "undefined") { window.getTimeZoneOptionsByOffset = window.getTimeZoneOptionsByOffset || getTimeZoneOptionsByOffset; }
+if(typeof window !== "undefined") { window.isValidTimeZoneId = window.isValidTimeZoneId || isValidTimeZoneId; }
+if(typeof window !== "undefined") { window.getCurrentTimeZone = window.getCurrentTimeZone || getCurrentTimeZone; }
+if(typeof window !== "undefined") { window.applyTimeZone = window.applyTimeZone || applyTimeZone; }
+if(typeof window !== "undefined") { window.getCurrentSemesterEndDate = window.getCurrentSemesterEndDate || getCurrentSemesterEndDate; }
+if(typeof window !== "undefined") { window.getCurrentRequiredOjtHours = window.getCurrentRequiredOjtHours || getCurrentRequiredOjtHours; }
+if(typeof window !== "undefined") { window.applyOjtStartDate = window.applyOjtStartDate || applyOjtStartDate; }
+if(typeof window !== "undefined") { window.applySemesterEndDate = window.applySemesterEndDate || applySemesterEndDate; }
+if(typeof window !== "undefined") { window.applyRequiredOjtHours = window.applyRequiredOjtHours || applyRequiredOjtHours; }
+if(typeof window !== "undefined") { window.hydrateOjtSettingsFromStorage = window.hydrateOjtSettingsFromStorage || hydrateOjtSettingsFromStorage; }
+if(typeof window !== "undefined") { window.parseDateKeyGmt8 = window.parseDateKeyGmt8 || parseDateKeyGmt8; }
+if(typeof window !== "undefined") { window.nowGmt8StartOfDay = window.nowGmt8StartOfDay || nowGmt8StartOfDay; }
+if(typeof window !== "undefined") { window.addDaysGmt8 = window.addDaysGmt8 || addDaysGmt8; }
+if(typeof window !== "undefined") { window.diffDaysGmt8 = window.diffDaysGmt8 || diffDaysGmt8; }
+if(typeof window !== "undefined") { window.getGmt8Weekday = window.getGmt8Weekday || getGmt8Weekday; }
+if(typeof window !== "undefined") { window.isWorkdayGmt8 = window.isWorkdayGmt8 || isWorkdayGmt8; }
+if(typeof window !== "undefined") { window.countWorkdaysGmt8 = window.countWorkdaysGmt8 || countWorkdaysGmt8; }
+if(typeof window !== "undefined") { window.formatGmt8DateLabel = window.formatGmt8DateLabel || formatGmt8DateLabel; }
+if(typeof window !== "undefined") { window.getWeekNumber = window.getWeekNumber || getWeekNumber; }
+if(typeof window !== "undefined") { window.getDayNumberInOjtWeek = window.getDayNumberInOjtWeek || getDayNumberInOjtWeek; }
+if(typeof window !== "undefined") { window.getTimelineWeekDayLabel = window.getTimelineWeekDayLabel || getTimelineWeekDayLabel; }
+if(typeof window !== "undefined") { window.getTotalHours = window.getTotalHours || getTotalHours; }
+if(typeof window !== "undefined") { window.getOverallDelta = window.getOverallDelta || getOverallDelta; }
+if(typeof window !== "undefined") { window.getWeekHours = window.getWeekHours || getWeekHours; }
+if(typeof window !== "undefined") { window.getWeekDateRange = window.getWeekDateRange || getWeekDateRange; }
+if(typeof window !== "undefined") { window.getTodayFileName = window.getTodayFileName || getTodayFileName; }
+if(typeof window !== "undefined") { window.setTheme = window.setTheme || setTheme; }
+if(typeof window !== "undefined") { window.syncF1LightToggleLabel = window.syncF1LightToggleLabel || syncF1LightToggleLabel; }
+if(typeof window !== "undefined") { window.toggleF1LightMode = window.toggleF1LightMode || toggleF1LightMode; }
+if(typeof window !== "undefined") { window.updateFavicon = window.updateFavicon || updateFavicon; }
+if(typeof window !== "undefined") { window.getIdentityAlignmentLabel = window.getIdentityAlignmentLabel || getIdentityAlignmentLabel; }
+if(typeof window !== "undefined") { window.normalizeForecastLogs = window.normalizeForecastLogs || normalizeForecastLogs; }
+if(typeof window !== "undefined") { window.calculateForecastUnified = window.calculateForecastUnified || calculateForecastUnified; }
+if(typeof window !== "undefined") { window.buildTrajectorySeries = window.buildTrajectorySeries || buildTrajectorySeries; }
+if(typeof window !== "undefined") { window.calculateForecast = window.calculateForecast || calculateForecast; }
+if(typeof window !== "undefined") { window.DailyRecord = window.DailyRecord || DailyRecord; }
+if(typeof window !== "undefined") { window.currentReflectionViewMode = window.currentReflectionViewMode || currentReflectionViewMode; }
+if(typeof window !== "undefined") { window.currentSortMode = window.currentSortMode || currentSortMode; }
+if(typeof window !== "undefined") { window.currentSummaryRecord = window.currentSummaryRecord || currentSummaryRecord; }
+if(typeof window !== "undefined") { window.editingIndex = window.editingIndex || editingIndex; }
+if(typeof window !== "undefined") { window.MASTER_TARGET_HOURS = window.MASTER_TARGET_HOURS || MASTER_TARGET_HOURS; }
+if(typeof window !== "undefined") { window.DAILY_TARGET_HOURS = window.DAILY_TARGET_HOURS || DAILY_TARGET_HOURS; }
+if(typeof window !== "undefined") { window.GREAT_DELTA_THRESHOLD = window.GREAT_DELTA_THRESHOLD || GREAT_DELTA_THRESHOLD; }
+if(typeof window !== "undefined") { window.DEFAULT_TIMEZONE = window.DEFAULT_TIMEZONE || DEFAULT_TIMEZONE; }
+if(typeof window !== "undefined") { window.DTR_COLORS = window.DTR_COLORS || DTR_COLORS; }
+if(typeof window !== "undefined") { window.OJT_START = window.OJT_START || OJT_START; }
+if(typeof window !== "undefined") { window.editingIndex = window.editingIndex || editingIndex; }
+if(typeof window !== "undefined") { window.MASTER_TARGET_HOURS = window.MASTER_TARGET_HOURS || MASTER_TARGET_HOURS; }
+if(typeof window !== "undefined") { window.DAILY_TARGET_HOURS = window.DAILY_TARGET_HOURS || DAILY_TARGET_HOURS; }
+if(typeof window !== "undefined") { window.GREAT_DELTA_THRESHOLD = window.GREAT_DELTA_THRESHOLD || GREAT_DELTA_THRESHOLD; }
+if(typeof window !== "undefined") { window.DEFAULT_TIMEZONE = window.DEFAULT_TIMEZONE || DEFAULT_TIMEZONE; }
+if(typeof window !== "undefined") { window.DTR_COLORS = window.DTR_COLORS || DTR_COLORS; }
+if(typeof window !== "undefined") { window.OJT_START = window.OJT_START || OJT_START; }

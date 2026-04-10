@@ -34,7 +34,7 @@ function clearDTRForm() {
 function updateWeeklyCounter(dateInput) {
     if (!dateInput) return;
     const weekNum = getWeekNumber(dateInput);
-    const weekHours = dailyRecords
+    const weekHours = Store.getRecords()
         .filter(r => getWeekNumber(r.date) === weekNum)
         .reduce((sum, r) => sum + r.hours, 0);
 
@@ -69,7 +69,7 @@ function showSummary(record) {
         return;
     }
 
-    const previousDelta = dailyRecords.length > 1 ? dailyRecords[dailyRecords.length - 2].delta : 0;
+    const previousDelta = Store.getRecords().length > 1 ? Store.getRecords()[Store.getRecords().length - 2].delta : 0;
     
     let deltaColor = DTR_COLORS.neutral;
     if (record.delta <= 0) deltaColor = DTR_COLORS.warning;
@@ -77,7 +77,7 @@ function showSummary(record) {
 
     let trendKey = "trend_no_previous_record";
     let trendColor = DTR_COLORS.neutral;
-    if (dailyRecords.length > 1) {
+    if (Store.getRecords().length > 1) {
         if (record.delta > previousDelta) { trendKey = "trend_improved"; trendColor = DTR_COLORS.good; }
         else if (record.delta < previousDelta) { trendKey = "trend_declined"; trendColor = DTR_COLORS.warning; }
         else { trendKey = "trend_same_as_before"; trendColor = DTR_COLORS.neutral; }
@@ -115,7 +115,7 @@ function showSummary(record) {
         : (typeof window !== "undefined" && window.DTRI18N ? window.DTRI18N.t("na_short") : "N/A");
 
     // OJT Forecast logic Alignment (SINGLE SOURCE OF TRUTH)
-    const f = calculateForecastUnified({ logs: dailyRecords });
+    const f = calculateForecastUnified({ logs: Store.getRecords() });
     const absDelta = Math.abs(f.currentStatusDelta).toFixed(1);
     const statusKey = f.currentStatusDelta > 0 ? "status_ahead_hours" : (f.currentStatusDelta < 0 ? "status_behind_hours" : "status_on_track");
     const statusArgs = f.currentStatusDelta !== 0 ? JSON.stringify({ hours: absDelta }) : "{}";
@@ -175,6 +175,7 @@ function showSummary(record) {
                     img.src = src;
                     img.setAttribute("style", "width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border); transition: transform 0.2s;");
                     img.alt = sessionLabel;
+                    img.alt = sessionLabel;
                     img.onerror = function () { this.style.visibility = "hidden"; };
                     img.onmouseover = function () { this.style.transform = "scale(2.5)"; this.style.zIndex = "100"; };
                     img.onmouseout = function () { this.style.transform = "scale(1)"; this.style.zIndex = "1"; };
@@ -191,20 +192,20 @@ function loadReflectionViewer() {
     viewer.innerHTML = "";
     const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
 
-    if (dailyRecords.length === 0) {
+    if (Store.getRecords().length === 0) {
         const emptyText = t ? t("no_reflections_saved") : "No reflections saved yet.";
         viewer.innerHTML = `<p class="empty" data-i18n="no_reflections_saved">${emptyText}</p>`;
         return;
     }
 
     const dedupedMap = new Map();
-    dailyRecords.forEach((r, idx) => {
+    Store.getRecords().forEach((r, idx) => {
         const dateKey = toGmt8DateKey(r && r.date) || (r && r.date);
         if (!dateKey) return;
         dedupedMap.set(dateKey, { r: { ...r, date: dateKey }, originalIndex: idx });
     });
     const dedupedEntries = Array.from(dedupedMap.values()).sort((a, b) => a.r.date.localeCompare(b.r.date));
-    const duplicateCount = Math.max(0, dailyRecords.length - dedupedEntries.length);
+    const duplicateCount = Math.max(0, Store.getRecords().length - dedupedEntries.length);
 
     updateReflectionWeekOptions();
     const weekFilter = currentReflectionViewMode === "week" ? getReflectionSelectedWeek() : null;
@@ -229,7 +230,7 @@ function loadReflectionViewer() {
     }
 
     const maxWeeklyHours = DAILY_TARGET_HOURS * 7;
-    const fallbackWeek = dailyRecords.length > 0 ? getWeekNumber(dailyRecords[dailyRecords.length - 1].date) : 1;
+    const fallbackWeek = Store.getRecords().length > 0 ? getWeekNumber(Store.getRecords()[Store.getRecords().length - 1].date) : 1;
     if (weekFilter) {
         const weekHoursLabel = t ? t("week_hours_label", { week: weekFilter }) : ("Week " + weekFilter + " Hours");
         const weekHours = getWeekHours(weekFilter);
@@ -242,7 +243,7 @@ function loadReflectionViewer() {
         counterDiv.innerHTML = `<strong><span data-i18n="week_hours_label" data-i18n-args='{"week":${weekFilter}}'>${weekHoursLabel}</span>:</strong> <span style="color:${weekColor}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span> <span style="opacity:0.7; font-size:0.9em;">(${range.start} - ${range.end})</span>`;
         viewer.appendChild(counterDiv);
     } else {
-        const latestDate = dailyRecords[dailyRecords.length - 1].date;
+        const latestDate = Store.getRecords()[Store.getRecords().length - 1].date;
         const currentWeek = getWeekNumber(latestDate);
         const weekHoursLabel = t ? t("week_hours_label", { week: currentWeek }) : ("Week " + currentWeek + " Hours");
         const currentWeekHours = getWeekHours(currentWeek);
@@ -261,7 +262,7 @@ function loadReflectionViewer() {
         let trendKey = "trend_no_previous_record";
         let trendColor = DTR_COLORS.neutral;
         if (originalIndex > 0) {
-            const prevDelta = dailyRecords[originalIndex - 1].delta;
+            const prevDelta = Store.getRecords()[originalIndex - 1].delta;
             if (r.delta > prevDelta) { trendKey = "trend_improved"; trendColor = DTR_COLORS.good; }
             else if (r.delta < prevDelta) { trendKey = "trend_declined"; trendColor = DTR_COLORS.warning; }
             else { trendKey = "trend_same_as_before"; trendColor = DTR_COLORS.neutral; }
@@ -404,7 +405,7 @@ function saveEditModal() {
                 const failedCount = results.filter((r) => r.status === "rejected").length;
 
                 if (!newImageIds.length) {
-                    const old = dailyRecords[editingIndex];
+                    const old = Store.getRecords()[editingIndex];
                     if (failedCount > 0) {
                         alert("Image upload failed for " + failedCount + " image(s). Keeping old images.");
                     }
@@ -417,7 +418,7 @@ function saveEditModal() {
                 }
 
                 // Delete old images and save new ones
-                const old = dailyRecords[editingIndex];
+                const old = Store.getRecords()[editingIndex];
                 const oldIds = old.imageIds || [];
                 if (oldIds.length && typeof deleteImagesFromStore === "function") {
                     deleteImagesFromStore(oldIds).catch(() => {});
@@ -430,7 +431,7 @@ function saveEditModal() {
                 alert("Failed to save images to storage: " + (err && err.message ? err.message : err));
             });
     } else {
-        const old = dailyRecords[editingIndex];
+        const old = Store.getRecords()[editingIndex];
         finalizeSave(date, hours, reflection, accomplishments, tools, old.imageIds || [], l2Data);
     }
 }
@@ -444,34 +445,34 @@ async function finalizeSave(date, hours, reflection, accomplishments, tools, ima
     }
 
     const normalizedDate = dateKey || date;
-    const duplicateIndex = dailyRecords.findIndex((r, idx) =>
+    const duplicateIndex = Store.getRecords().findIndex((r, idx) =>
         idx !== editingIndex && (toGmt8DateKey(r.date) || r.date) === normalizedDate
     );
     if (duplicateIndex !== -1) {
         if (!confirm("A DTR record for " + normalizedDate + " already exists. Overwrite it with this edit?")) {
             return;
         }
-        dailyRecords.splice(duplicateIndex, 1);
+        Store.removeRecordAt(duplicateIndex);
         if (duplicateIndex < editingIndex) editingIndex -= 1;
     }
 
-    dailyRecords[editingIndex] = new DailyRecord(normalizedDate, hours, reflection, accomplishments, tools, [], l2Data, imageIds || []);
-    dailyRecords.sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
+    Store.updateRecord(editingIndex, new DailyRecord(normalizedDate, hours, reflection, accomplishments, tools, [], l2Data, imageIds || []));
+    Store.getRecords().sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
     if (typeof persistDTR === "function") {
-        const ok = await persistDTR(dailyRecords);
+        const ok = await persistDTR(Store.getRecords());
         if (!ok) {
             alert("Failed to save record update.");
             return;
         }
     } else {
-        localStorage.setItem("dtr", JSON.stringify(dailyRecords));
+        localStorage.setItem("dtr", JSON.stringify(Store.getRecords()));
     }
 
     closeEditModal();
     updateReflectionWeekOptions();
     loadReflectionViewer();
-    const newIndex = dailyRecords.findIndex(r => r.date === date);
-    showSummary(dailyRecords[newIndex]);
+    const newIndex = Store.getRecords().findIndex(r => r.date === date);
+    showSummary(Store.getRecords()[newIndex]);
     if (typeof renderDailyGraph === "function") renderDailyGraph();
     if (typeof renderWeeklyGraph === "function") renderWeeklyGraph();
     if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
@@ -481,7 +482,7 @@ async function finalizeSave(date, hours, reflection, accomplishments, tools, ima
 document.addEventListener("click", e => {
     if (!e.target.classList.contains("edit-btn")) return;
     editingIndex = Number(e.target.dataset.index);
-    const r = dailyRecords[editingIndex];
+    const r = Store.getRecords()[editingIndex];
     if (typeof applyDtrDateIntegrityGuardToInputs === "function") {
         applyDtrDateIntegrityGuardToInputs();
     }
@@ -554,3 +555,12 @@ if (editImgInput) {
         });
     });
 }
+
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.clearDTRForm = window.clearDTRForm || clearDTRForm; }
+if(typeof window !== "undefined") { window.updateWeeklyCounter = window.updateWeeklyCounter || updateWeeklyCounter; }
+if(typeof window !== "undefined") { window.showSummary = window.showSummary || showSummary; }
+if(typeof window !== "undefined") { window.loadReflectionViewer = window.loadReflectionViewer || loadReflectionViewer; }
+if(typeof window !== "undefined") { window.closeEditModal = window.closeEditModal || closeEditModal; }
+if(typeof window !== "undefined") { window.saveEditModal = window.saveEditModal || saveEditModal; }
+if(typeof window !== "undefined") { window.finalizeSave = window.finalizeSave || finalizeSave; }

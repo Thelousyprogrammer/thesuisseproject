@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(0.166667,0,0,0.166667,0,0)">
+        <rect x="0" y="0" width="96" height="96" style="fill:rgb(142,110,186);"/>
+    </g>
+    <g transform="matrix(0.145833,0,0,0.145833,1,1)">
+        <rect x="0" y="0" width="96" height="96" style="fill:rgb(135,192,122);"/>
+    </g>
+    <g transform="matrix(0.125,0,0,0.125,2,2)">
+        <rect x="0" y="0" width="96" height="96"/>
+    </g>
+    <g transform="matrix(1,0,0,1,34,-58)">
+        <g transform="matrix(4.166667,0,0,4.166667,-26.458333,64.654167)">
+        </g>
+        <text x="-30.625px" y="64.654px" style="font-family:'NotoSansJP-Thin', 'Noto Sans JP', sans-serif;font-weight:100;font-size:4.167px;fill:white;">ず</text>
+    </g>
+    <g transform="matrix(1,0,0,1,40,-58)">
+        <g transform="matrix(4.166667,0,0,4.166667,-26.458333,64.654167)">
+        </g>
+        <text x="-30.625px" y="64.654px" style="font-family:'NotoSansJP-Thin', 'Noto Sans JP', sans-serif;font-weight:100;font-size:4.167px;fill:white;">と</text>
+    </g>
+    <g transform="matrix(1,0,0,1,34,-52)">
+        <g transform="matrix(4.166667,0,0,4.166667,-26.916667,64.654167)">
+        </g>
+        <text x="-31.083px" y="64.654px" style="font-family:'NotoSansJP-Thin', 'Noto Sans JP', sans-serif;font-weight:100;font-size:4.167px;fill:white;">ま</text>
+    </g>
+    <g transform="matrix(1,0,0,1,40,-52)">
+        <g transform="matrix(4.166667,0,0,4.166667,-26.916667,64.654167)">
+        </g>
+        <text x="-31.083px" y="64.654px" style="font-family:'NotoSansJP-Thin', 'Noto Sans JP', sans-serif;font-weight:100;font-size:4.167px;fill:white;">よ</text>
+    </g>
+    <g transform="matrix(1,0,0,1,34,-53)">
+        <g transform="matrix(0.833333,0,0,0.833333,-23.916667,61.330833)">
+        </g>
+        <text x="-28.083px" y="61.331px" style="font-family:'NotoSansJP-Thin', 'Noto Sans JP', sans-serif;font-weight:100;font-size:0.833px;fill:rgb(253,26,46);">嘘じゃない</text>
+    </g>
+</svg>

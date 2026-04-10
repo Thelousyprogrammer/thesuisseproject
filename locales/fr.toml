@@ -1,5 +1,5 @@
 # =============================================================================
-# Custom DTR - Complete English Localization (en.toml)
+# Custom DTR - Complete French (Français) Localization (fr.toml)
 # Project: customDTR | Formula 1 Delta System
 # =============================================================================
 
@@ -59,8 +59,9 @@ na_short = "N/D"
 hours_unit = "heures"
 summary_reflection = "Réflexion"
 summary_tools = "Outils"
-timeline_label = "Semaine: {week} | Jour: {day}"
+week_label = "Semaine {week}"
 week_hours_label = "Semaine {week} Heures"
+timeline_label = "Semaine: {week} | Jour: {day}"
 duplicate_records_hidden = "{count} enregistrement(s) en double masqué(s) dans le Visualiseur de Réflexion."
 confirm_overwrite_edit = "Un enregistrement DTR pour {date} existe déjà. L'écraser avec cette modification ?"
 record_updated_success = "Enregistrement mis à jour avec succès !"
@@ -167,7 +168,7 @@ upload_images = "Télécharger des Images"
 save_day = "Enregistrer la Journée"
 clear_dtr_form = "Effacer le Formulaire DTR"
 placeholder_reflection = "Qu'avez-vous appris aujourd'hui ?"
-placeholder_accomplishments = "Interface utilisateur implémentée\nBugs corrigés dans le script"
+placeholder_accomplishments = "Interface utilisateur implémentée, Bugs corrigés dans le script"
 placeholder_tools = "VS Code, Chrome, Git"
 
 [telemetry_l2_wellness]
@@ -391,6 +392,13 @@ records_idb_to_local = "Enregistrements : IndexedDB vers localStorage"
 remove_idb_duplicates = "Supprimer Doublons IDB"
 storage_records_label = " (enregistrements)"
 storage_images_idb = " Images (IndexedDB)"
+used_of = "utilisé sur"
+storage_usage_label = "Utilisation des enregistrements"
+storage_capacity_label = "Records capacity"
+idb_usage_label = "IndexedDB usage"
+idb_capacity_label = "IndexedDB capacity (normalized)"
+idb_raw_estimate_label = "raw browser estimate"
+idb_none = "indisponible"
 calculating = "Calcul..."
 calculating_ellipsis = "Calcul en cours..."
 target_images = "Images Cibles"
@@ -421,6 +429,14 @@ save_without_images_confirm = "Enregistrer sans images pour libérer de l'espace
 confirm_clear_all_data = "Cela supprimera TOUS les enregistrements DTR, images, paramètres et thèmes. Cette action est irréversible. Continuer ?"
 cleared_all_data_success = "Toutes les données ont été effacées. La page va maintenant se recharger."
 
+transfer_records_title = "Transfer Records"
+transfer_records_help = "Move **{count}** valid record(s) from **{source}** to **{target}**."
+transfer_replace_help = "Replace overwrites the entire target dataset."
+transfer_include_images = "Include images in transfer"
+transfer_replace_target = "Replace Target"
+optimizing_images_status = "Optimizing images..."
+restoring_originals_status = "Restoring originals..."
+abort = "Abort"
 [exports]
 dtr_exports = "Exportations DTR"
 export_all_pdf = "Exporter tout en .pdf"

@@ -3,7 +3,7 @@
  * Handles the rendering of GitHub-style contribution graphs
  */
 
-function renderDailyGraph(records = dailyRecords) {
+function renderDailyGraph(records = Store.getRecords()) {
     const container = document.getElementById("githubGraph");
     const labelsContainer = document.getElementById("monthLabels");
     const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
@@ -100,39 +100,72 @@ function renderDailyGraph(records = dailyRecords) {
     }
 }
 
-function renderWeeklyGraph(records = dailyRecords) {
+function renderWeeklyGraph(records = Store.getRecords()) {
     const container = document.getElementById("weeklyGraph");
     if (!container) return;
     container.innerHTML = "";
 
-    const weeklyData = {};
+    // 1. Map all hours to their absolute Week Number (Day 1 of OJT = Week 1)
+    const weeksMap = {};
     records.forEach(r => {
         const d = parseDateKeyGmt8(toGmt8DateKey(r.date));
         if (!d) return;
-        const month = formatGmt8DateLabel(d, { month: "short" });
-        const year = formatGmt8DateLabel(d, { year: "numeric" });
-        const key = `${month} ${year}`;
         const week = getWeekNumber(d);
-
-        if (!weeklyData[key]) weeklyData[key] = {};
-        weeklyData[key][week] = (weeklyData[key][week] || 0) + r.hours;
+        weeksMap[week] = (weeksMap[week] || 0) + r.hours;
     });
 
-    const months = Object.keys(weeklyData);
-    months.forEach(mKey => {
+    const weekKeys = Object.keys(weeksMap).map(Number);
+    if (!weekKeys.length) return;
+
+    const maxWeek = Math.max(...weekKeys, 1);
+
+    // 2. Group weeks by the calendar month of their starting date
+    const monthGroups = {};
+    // Ensure chronological ordering of groups
+    const monthKeysOrder = [];
+
+    for (let w = 1; w <= maxWeek; w++) {
+        const range = getWeekDateRange(w);
+        // Use +3 days to find the midpoint of the week. 
+        // This ensures a week starting late in a month (e.g. Mar 30) belongs to the month it primarily occupies (April).
+        const d = addDaysGmt8(range.startDate, 3);
+        const monthKey = formatGmt8DateLabel(d, { month: "short", year: "numeric" });
+        
+        if (!monthGroups[monthKey]) {
+            monthGroups[monthKey] = [];
+            monthKeysOrder.push(monthKey);
+        }
+        monthGroups[monthKey].push(w);
+    }
+
+    // 3. Render each calendar month block
+    for (const monthKey of monthKeysOrder) {
+        const weeksInMonth = monthGroups[monthKey];
+        
+        // Skip blocks with absolutely no data recorded in any of the weeks for this month
+        let hasAnyData = false;
+        for (const w of weeksInMonth) {
+            if (weeksMap[w] !== undefined) {
+                hasAnyData = true;
+                break;
+            }
+        }
+        if (!hasAnyData) continue;
+
         const monthBlock = document.createElement("div");
         monthBlock.className = "month-block";
 
         const nameLabel = document.createElement("div");
         nameLabel.className = "month-name";
-        nameLabel.innerText = mKey;
+        nameLabel.innerText = monthKey;
         monthBlock.appendChild(nameLabel);
 
         const cellsWrapper = document.createElement("div");
         cellsWrapper.className = "week-cells";
 
-        const weeks = weeklyData[mKey];
-        Object.values(weeks).forEach(hours => {
+        for (const currentWeek of weeksInMonth) {
+            const hours = weeksMap[currentWeek] || 0;
+
             const cell = document.createElement("div");
             cell.className = "day-cell";
             
@@ -142,11 +175,15 @@ function renderWeeklyGraph(records = dailyRecords) {
             else if (hours > 0) level = 1;
             
             cell.classList.add(`cell-${['empty', 'low', 'mid', 'high'][level]}`);
-            cell.title = `Weekly Total: ${hours}h`;
+            cell.title = `Week ${currentWeek}: ${hours}h`;
             cellsWrapper.appendChild(cell);
-        });
+        }
 
         monthBlock.appendChild(cellsWrapper);
         container.appendChild(monthBlock);
-    });
+    }
 }
+
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.renderDailyGraph = window.renderDailyGraph || renderDailyGraph; }
+if(typeof window !== "undefined") { window.renderWeeklyGraph = window.renderWeeklyGraph || renderWeeklyGraph; }

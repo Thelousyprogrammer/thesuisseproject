@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title data-i18n="head_title">Custom DTR | Delta Time System</title>
-  <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&family=Noto+Sans+TC:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&family=Noto+Sans+TC:wght@400;600;700&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/telemetry.css">
   <link rel="stylesheet" href="css/theme.css">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
     <!-- favicon -->
   <link rel="icon" href="favicons/F1Favicon32.png" sizes="32x32" type="image/png">
   <link rel="icon" href="favicons/F1Favicon192.png" sizes="192x192" type="image/png">
@@ -29,10 +30,18 @@
     <p class="subtitle" data-i18n="app_subtitle">
       Formula 1 Delta System • Target-Based Productivity Telemetry
     </p>
-      <label for="languageSelect" style="opacity:0.85;" data-i18n="language">Language</label>
-      <select id="languageSelect" style="max-width: 220px;"></select>
-    <button id="f1LightToggleBtn" class="telemetry-btn light-toggle-btn" type="button" onclick="toggleF1LightMode()" data-i18n="light_off">Light: Off</button>
-    <button class="telemetry-btn" type="button" onclick="window.location.href='faq.html'" data-i18n="faq">FAQ</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-top:14px; gap:10px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label for="languageSelect" style="opacity:0.85; margin:0;" data-i18n="language">Language</label>
+        <select id="languageSelect" style="max-width: 220px;"></select>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button id="f1LightToggleBtn" class="telemetry-btn" type="button" onclick="toggleF1LightMode()" style="display:flex; align-items:center; justify-content:center; padding: 6px 12px; width:44px; height:38px;">
+          <span class="material-symbols-outlined">light_mode</span>
+        </button>
+        <button class="telemetry-btn" type="button" onclick="window.location.href='faq.html'" style="display:flex; align-items:center; justify-content:center; padding: 6px 12px; height:38px;" data-i18n="faq">FAQ</button>
+      </div>
+    </div>
   </div>
 
   <!-- Theme Switcher -->
@@ -497,6 +506,8 @@
 
 <!-- Core Logic & Helpers -->
 <script src="scripts/theme-sync.js"></script>
+<script src="scripts/store.js"></script>
+<script src="scripts/dtr-core.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/dist/index.min.js"></script>
 <script src="scripts/dtr-image-store.js"></script>
 <!-- Logic Modules -->
@@ -508,7 +519,6 @@
 <script src="scripts/dtr-exports.js"></script>
 <!-- Main Controller -->
 <script src="scripts/dtr-i18n.js"></script>
-<script src="scripts/dtr-core.js"></script>
 <script src="scripts/script.js"></script>
 <script>
   window.addEventListener("DOMContentLoaded", () => {

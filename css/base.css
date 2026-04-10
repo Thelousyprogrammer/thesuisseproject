@@ -208,7 +208,6 @@ button:hover {
   font-family: var(--font-heading);
   text-transform: uppercase;
   letter-spacing: 2px;
-  text-shadow: var(--led-glow);
   color: var(--accent);
 }
 

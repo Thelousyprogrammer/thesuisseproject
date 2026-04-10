@@ -127,3 +127,10 @@ assert.strictEqual(result4.remainingHours, 0);
 assert.strictEqual(result4.requiredRate, 0);
 
 console.log("✅ All Telemetry Logic Validation Tests Passed!");
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.pad2 = window.pad2 || pad2; }
+if(typeof window !== "undefined") { window.toGmt8DateKey = window.toGmt8DateKey || toGmt8DateKey; }
+if(typeof window !== "undefined") { window.parseDateKeyGmt8 = window.parseDateKeyGmt8 || parseDateKeyGmt8; }
+if(typeof window !== "undefined") { window.addDaysGmt8 = window.addDaysGmt8 || addDaysGmt8; }
+if(typeof window !== "undefined") { window.isWorkdayGmt8 = window.isWorkdayGmt8 || isWorkdayGmt8; }
+if(typeof window !== "undefined") { window.calculateForecastUnified = window.calculateForecastUnified || calculateForecastUnified; }

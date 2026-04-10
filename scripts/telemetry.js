@@ -101,14 +101,18 @@ function syncTelemetryF1LightToggleLabel() {
         : (localStorage.getItem("user-theme") || "f1");
     const isF1Family = activeTheme === "f1" || activeTheme === "f1-light";
     if (!isF1Family) {
-        btn.textContent = t ? t("light_na") : "Light: N/A";
+        const iconSpan = btn.querySelector(".material-symbols-outlined");
+        if (iconSpan) iconSpan.textContent = "light_mode";
         btn.setAttribute("aria-pressed", "false");
         btn.disabled = true;
         return;
     }
     btn.disabled = false;
     const isLight = activeTheme === "f1-light";
-    btn.textContent = t ? (isLight ? t("light_on") : t("light_off")) : (isLight ? "Light: On" : "Light: Off");
+    const iconSpan = btn.querySelector(".material-symbols-outlined");
+    if (iconSpan) {
+        iconSpan.textContent = isLight ? "dark_mode" : "light_mode";
+    }
     btn.setAttribute("aria-pressed", isLight ? "true" : "false");
 }
 
@@ -363,9 +367,9 @@ function populateWeekSelector(logs) {
     
     const currentVal = select.value;
     const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
-    const allWeeksLabel = t ? t("all_weeks") : "Full OJT Period";
+    const allWeeksLabel = t ? t("navigation.all_weeks") : "Full OJT Period";
     
-    select.innerHTML = `<option value="all" data-i18n="all_weeks">${allWeeksLabel}</option>`;
+    select.innerHTML = `<option value="all" data-i18n="navigation.all_weeks">${allWeeksLabel}</option>`;
     if (!logs || logs.length === 0) return;
 
     const weeks = [...new Set(logs.map(r => getWeekNumber(r.date)))].sort((a,b) => b-a);
@@ -373,9 +377,9 @@ function populateWeekSelector(logs) {
     weeks.forEach(w => {
         const opt = document.createElement("option");
         opt.value = w;
-        opt.setAttribute("data-i18n", "week_label");
+        opt.setAttribute("data-i18n", "ui.week_label");
         // For simple labels with params, we just set the text here and trust languageChanged to handle it
-        opt.innerText = t ? t("week_label", { week: w }) : `Week ${w}`;
+        opt.innerText = t ? t("ui.week_label", { week: w }) : `Week ${w}`;
         select.appendChild(opt);
     });
     
@@ -449,19 +453,21 @@ function updateTargetPace(val) {
 
     const f = calculateForecastUnified({ logs: allLogs, paceOverride: pace });
     const projectedLabelLong = formatGmt8DateLabel(f.projectedDate, { month: "long", day: "numeric", year: "numeric" });
-    safeUpdate("completionDateText", `Projected: ${projectedLabelLong}`);
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+    const projectedPrefix = t ? t('status_predicted_prefix') : "Projected: ";
+    safeUpdate("completionDateText", `${projectedPrefix}${projectedLabelLong}`);
 
     const paceSufficient = f.remainingHours <= 0 || pace >= f.requiredRate;
     const defEl = document.getElementById("timeDeficitText");
     if (defEl) {
         if (f.remainingHours <= 0) {
-            defEl.innerHTML = `Simulation: <strong>Goal Reached</strong>`;
+            defEl.innerHTML = t ? t('simulator.sim_goal_reached') : `Simulation: <strong>Goal Reached</strong>`;
             defEl.style.color = COLORS.excellent;
         } else if (!paceSufficient) {
-            defEl.innerHTML = `Simulation: <strong>Below Target Pace</strong>`;
+            defEl.innerHTML = t ? t('simulator.sim_below_target') : `Simulation: <strong>Below Target Pace</strong>`;
             defEl.style.color = COLORS.accent;
         } else {
-            defEl.innerHTML = `Simulation: <strong>On Track</strong>`;
+            defEl.innerHTML = t ? t('simulator.sim_on_track') : `Simulation: <strong>On Track</strong>`;
             defEl.style.color = COLORS.good;
         }
     }
@@ -471,14 +477,14 @@ function updateTargetPace(val) {
         const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
         const projectedLabel = formatGmt8DateLabel(f.projectedDate, { month: "short", day: "numeric" });
         if (f.remainingHours <= 0) {
-            statusMsg.innerText = t ? t('status_goal_already_reached_sim') : `Goal already reached.`;
+            statusMsg.innerText = t ? t('status_indicators.status_goal_already_reached_sim') : `Goal already reached.`;
             statusMsg.style.color = COLORS.excellent;
         } else if (paceSufficient) {
-            statusMsg.innerText = t ? t('status_sim_pace_finish', { pace: pace.toFixed(1), date: projectedLabel }) : `At ${pace.toFixed(1)}h/day, you finish by ${projectedLabel}.`;
+            statusMsg.innerText = t ? t('status_indicators.status_sim_pace_finish', { pace: pace.toFixed(1), date: projectedLabel }) : `At ${pace.toFixed(1)}h/day, you finish by ${projectedLabel}.`;
             statusMsg.style.color = COLORS.good;
         } else {
             const targetRate = Math.ceil(f.requiredRate);
-            statusMsg.innerText = t ? t('status_sim_pace_insufficient', { pace: pace.toFixed(1), target: targetRate }) : `${pace.toFixed(1)}h/day is insufficient. Target ${targetRate}h+.`;
+            statusMsg.innerText = t ? t('status_indicators.status_sim_pace_insufficient', { pace: pace.toFixed(1), target: targetRate }) : `${pace.toFixed(1)}h/day is insufficient. Target ${targetRate}h+.`;
             statusMsg.style.color = COLORS.accent;
         }
     }
@@ -500,6 +506,47 @@ function resetPaceSlider() {
 function renderTelemetry(logs, selectedWeek = "all") {
     const today = nowGmt8StartOfDay();
     const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+    
+    // Check for empty data state
+    const mainContainer = document.querySelector(".telemetry-page");
+    const emptyMsgId = "telemetryEmptyStateMsg";
+    let emptyEl = document.getElementById(emptyMsgId);
+
+    if (!logs || logs.length === 0) {
+        // Destroy existing charts to free memory
+        if (typeof charts !== 'undefined' && charts) {
+            for (let k in charts) {
+                if (charts[k] && typeof charts[k].destroy === 'function') charts[k].destroy();
+                delete charts[k];
+            }
+        }
+        
+        // Hide all major sections but the header
+        document.querySelectorAll(".telemetry-section").forEach(s => {
+            if (s.id !== "simSection") s.style.display = "none";
+        });
+
+        if (!emptyEl) {
+            emptyEl = document.createElement("div");
+            emptyEl.id = emptyMsgId;
+            emptyEl.className = "card empty-state-card";
+            emptyEl.style.textAlign = "center";
+            emptyEl.style.padding = "60px 20px";
+            emptyEl.style.marginTop = "2rem";
+            mainContainer.appendChild(emptyEl);
+        }
+        emptyEl.style.display = "block";
+        emptyEl.innerHTML = `
+            <div style="font-size: 3rem; margin-bottom: 20px; opacity: 0.5;">📊</div>
+            <h2 data-i18n="charts_general.no_records_to_visualize" style="margin-bottom: 10px;">${t ? t("charts_general.no_records_to_visualize") : "No records to visualize."}</h2>
+            <p style="opacity: 0.7; font-size: 0.9rem;" data-i18n="ui.no_valid_dated_records">${t ? t("ui.no_valid_dated_records") : "Please add entries in the main DTR page to see analytics."}</p>
+        `;
+        return;
+    } else {
+        if (emptyEl) emptyEl.style.display = "none";
+        document.querySelectorAll(".telemetry-section").forEach(s => s.style.display = "");
+    }
+
     if (typeof charts !== 'undefined' && charts) {
         for (let k in charts) {
             if (charts[k] && typeof charts[k].destroy === 'function') {
@@ -520,13 +567,13 @@ function renderTelemetry(logs, selectedWeek = "all") {
         const d = f.currentStatusDelta;
         const absD = Math.abs(d).toFixed(1);
         if (d > 0) {
-            defEl.innerHTML = t ? t("status_ahead_hours", { hours: absD }) : `Ahead (+${absD}h)`;
+            defEl.innerHTML = t ? t("status_indicators.status_ahead_hours", { hours: absD }) : `Ahead (+${absD}h)`;
             defEl.style.color = COLORS.good;
         } else if (d < 0) {
-            defEl.innerHTML = t ? t("status_behind_hours", { hours: absD }) : `Behind (-${absD}h)`;
+            defEl.innerHTML = t ? t("status_indicators.status_behind_hours", { hours: absD }) : `Behind (-${absD}h)`;
             defEl.style.color = COLORS.accent;
         } else {
-            defEl.innerHTML = t ? t("status_on_track") : `On Track`;
+            defEl.innerHTML = t ? t("status_indicators.status_on_track") : `On Track`;
             defEl.style.color = COLORS.text;
         }
     }
@@ -540,14 +587,14 @@ function renderTelemetry(logs, selectedWeek = "all") {
     const statusMsg = document.getElementById("paceStatusMsg");
     if (statusMsg) {
         if (f.remainingHours <= 0) {
-            statusMsg.innerText = t ? t('status_goal_reached') : "Goal Reached! OJT Complete.";
+            statusMsg.innerText = t ? t('status_indicators.status_goal_reached') : "Goal Reached! OJT Complete.";
             statusMsg.style.color = COLORS.excellent;
         } else {
             const projectedLabel = formatGmt8DateLabel(f.projectedDate, { month: "short", day: "numeric" });
             if (f.isAhead) {
-                statusMsg.innerText = t ? t('status_on_track_to_finish', { date: projectedLabel }) : `On track to finish by ${projectedLabel}.`;
+                statusMsg.innerText = t ? t('status_indicators.status_on_track_to_finish', { date: projectedLabel }) : `On track to finish by ${projectedLabel}.`;
             } else {
-                statusMsg.innerText = t ? t('status_increase_hours') : `Required pace higher than current. Increase hours.`;
+                statusMsg.innerText = t ? t('status_indicators.status_increase_hours') : `Required pace higher than current. Increase hours.`;
             }
             statusMsg.style.color = f.isAhead ? COLORS.good : COLORS.accent;
         }
@@ -646,7 +693,7 @@ function renderWeeklyMatrix(logs) {
         const tr = document.createElement("tr");
         tr.style.borderBottom = "1px solid var(--grid)";
         tr.innerHTML = `
-            <td style="padding: 8px;">${t ? t("week_label", { week: w }) : ("Week " + w)}</td>
+            <td style="padding: 8px;">${t ? t("ui.week_label", { week: w }) : ("Week " + w)}</td>
             <td style="padding: 8px;">${data.ojt.toFixed(1)}h</td>
             <td style="padding: 8px;">${data.personal.toFixed(1)}h</td>
             <td style="padding: 8px; color: ${growth.startsWith('+') ? COLORS.good : (growth === '-' ? COLORS.text : COLORS.accent)}">${growth}</td>
@@ -660,6 +707,7 @@ function renderWeeklyMatrix(logs) {
 // --- CALCULATIONS ---
 
 function handleHealthIndicators(logs, paceOverride = null) {
+    const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
     let fatigueRisk = 0;
     const sorted = [...allLogs].sort((a,b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
     
@@ -694,16 +742,15 @@ function handleHealthIndicators(logs, paceOverride = null) {
     if (fatLabel) {
         const fatInd = document.getElementById("fatigueIndicator");
         const fatNote = document.getElementById("fatigueNote");
-        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
-        const prefix = (paceOverride !== null && t) ? t('status_predicted_prefix') : (paceOverride !== null ? "Predicted: " : "");
+        const prefix = (paceOverride !== null && t) ? t('status_indicators.status_predicted_prefix') : (paceOverride !== null ? "Predicted: " : "");
         if (fatigueRisk === 0) {
             if (fatInd) fatInd.innerText = "🟢";
-            fatLabel.innerText = prefix + (t ? t('status_stable') : "Stable");
+            fatLabel.innerText = prefix + (t ? t('status_indicators.status_stable') : "Stable");
             fatLabel.style.color = COLORS.good;
-            if (fatNote) fatNote.innerText = t ? t('status_sustainable') : "Performance is sustainable";
+            if (fatNote) fatNote.innerText = t ? t('status_indicators.status_sustainable') : "Performance is sustainable";
         } else if (fatigueRisk < 3) {
             if (fatInd) fatInd.innerText = "🟠";
-            fatLabel.innerText = prefix + (t ? t('status_acc_fatigue') : "Accumulating Fatigue");
+            fatLabel.innerText = prefix + (t ? t('status_indicators.status_acc_fatigue') : "Accumulating Fatigue");
             fatLabel.style.color = COLORS.warning;
             if (fatNote) fatNote.innerText = t ? t('status_high_load') : "High load detected";
         } else {
@@ -792,3 +839,23 @@ function calculateMomentum(today) {
     const streakUnit = t ? t('unit_days') : "Days";
     safeUpdate("streakValue", `${streak} ${streakUnit}`);
 }
+
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.getThemeValues = window.getThemeValues || getThemeValues; }
+if(typeof window !== "undefined") { window.initThemeSwitcher = window.initThemeSwitcher || initThemeSwitcher; }
+if(typeof window !== "undefined") { window.setTelemetryTheme = window.setTelemetryTheme || setTelemetryTheme; }
+if(typeof window !== "undefined") { window.syncTelemetryThemeDropdownSelection = window.syncTelemetryThemeDropdownSelection || syncTelemetryThemeDropdownSelection; }
+if(typeof window !== "undefined") { window.syncTelemetryF1LightToggleLabel = window.syncTelemetryF1LightToggleLabel || syncTelemetryF1LightToggleLabel; }
+if(typeof window !== "undefined") { window.toggleTelemetryF1LightMode = window.toggleTelemetryF1LightMode || toggleTelemetryF1LightMode; }
+if(typeof window !== "undefined") { window.withSequentialLineDelays = window.withSequentialLineDelays || withSequentialLineDelays; }
+if(typeof window !== "undefined") { window.replayChartAnimationForCanvas = window.replayChartAnimationForCanvas || replayChartAnimationForCanvas; }
+if(typeof window !== "undefined") { window.initTelemetryEntranceAnimations = window.initTelemetryEntranceAnimations || initTelemetryEntranceAnimations; }
+if(typeof window !== "undefined") { window.fetchTelemetryData = window.fetchTelemetryData || fetchTelemetryData; }
+if(typeof window !== "undefined") { window.populateWeekSelector = window.populateWeekSelector || populateWeekSelector; }
+if(typeof window !== "undefined") { window.updateView = window.updateView || updateView; }
+if(typeof window !== "undefined") { window.updateTargetPace = window.updateTargetPace || updateTargetPace; }
+if(typeof window !== "undefined") { window.resetPaceSlider = window.resetPaceSlider || resetPaceSlider; }
+if(typeof window !== "undefined") { window.renderTelemetry = window.renderTelemetry || renderTelemetry; }
+if(typeof window !== "undefined") { window.renderWeeklyMatrix = window.renderWeeklyMatrix || renderWeeklyMatrix; }
+if(typeof window !== "undefined") { window.handleHealthIndicators = window.handleHealthIndicators || handleHealthIndicators; }
+if(typeof window !== "undefined") { window.calculateMomentum = window.calculateMomentum || calculateMomentum; }

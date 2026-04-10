@@ -145,7 +145,7 @@ function renderTrajectoryChart(logs, customPace = null) {
             labels: labels,
             datasets: [
                 { 
-                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_trajectory_actual') : 'Actual Progress', 
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('charts_general.chart_trajectory_actual') : 'Actual Progress', 
                     data: actualCumulative, 
                     borderColor: lineAccent, 
                     backgroundColor: gradAccent, 
@@ -156,7 +156,7 @@ function renderTrajectoryChart(logs, customPace = null) {
                     spanGaps: false
                 },
                 { 
-                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_trajectory_projected') : 'Forecasted Projection', 
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('charts_general.chart_trajectory_projected') : 'Forecasted Projection', 
                     data: projectedCumulative, 
                     borderColor: lineExcellent, 
                     borderWidth: 2.5,
@@ -167,7 +167,7 @@ function renderTrajectoryChart(logs, customPace = null) {
                     spanGaps: true
                 },
                 { 
-                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_trajectory_ideal', { hours: DAILY_TARGET_HOURS }) : `Ideal Target (Standard ${DAILY_TARGET_HOURS}h Daily)`,
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('charts_general.chart_trajectory_ideal', { hours: DAILY_TARGET_HOURS }) : `Ideal Target (Standard ${DAILY_TARGET_HOURS}h Daily)`,
                     data: idealCumulative, 
                     borderColor: lineText,
                     borderWidth: 2,
@@ -192,15 +192,15 @@ function renderTrajectoryChart(logs, customPace = null) {
                             const diff = ideal - actual;
                             if (actual === 0 && ideal === 0) return null;
                             const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
-                            const deficitLabel = t ? t('chart_deficit') : 'Deficit: ';
-                            const surplusLabel = t ? t('chart_surplus') : 'Surplus: ';
-                            const onTrackLabel = t ? t('status_on_track') : 'On Track';
+                            const deficitLabel = t ? t('charts_general.chart_deficit') : 'Deficit: ';
+                            const surplusLabel = t ? t('charts_general.chart_surplus') : 'Surplus: ';
+                            const onTrackLabel = t ? t('status_indicators.status_on_track') : 'On Track';
                             const hours = Math.abs(diff).toFixed(1);
 
                             if (diff > 0) {
-                                return t ? t('chart_behind_tooltip', { hours }) : `${deficitLabel}${hours}h behind`;
+                                return t ? t('charts_general.chart_behind_tooltip', { hours }) : `${deficitLabel}${hours}h behind`;
                             } else if (diff < 0) {
-                                return t ? t('chart_ahead_tooltip', { hours }) : `${surplusLabel}${hours}h ahead`;
+                                return t ? t('charts_general.chart_ahead_tooltip', { hours }) : `${surplusLabel}${hours}h ahead`;
                             } else {
                                 return onTrackLabel;
                             }
@@ -228,11 +228,11 @@ function renderEnergyZoneChart(logs) {
 
     const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
     const zoneTranslationMap = {
-        "Elite": t ? t("chart_energy_elite") : "Elite",
-        "Overdrive": t ? t("chart_energy_overdrive") : "Overdrive",
-        "Solid": t ? t("chart_energy_solid") : "Solid",
-        "Survival": t ? t("chart_energy_survival") : "Survival",
-        "Recovery": t ? t("chart_energy_recovery") : "Recovery"
+        "Elite": t ? t("charts_general.chart_energy_elite") : "Elite",
+        "Overdrive": t ? t("charts_general.chart_energy_overdrive") : "Overdrive",
+        "Solid": t ? t("charts_general.chart_energy_solid") : "Solid",
+        "Survival": t ? t("charts_general.chart_energy_survival") : "Survival",
+        "Recovery": t ? t("charts_general.chart_energy_recovery") : "Recovery"
     };
     const zoneOrder = ["Recovery", "Survival", "Solid", "Overdrive", "Elite"];
     const zones = { Elite: 0, Overdrive: 0, Solid: 0, Survival: 0, Recovery: 0 };
@@ -275,8 +275,8 @@ function renderEnergyZoneChart(logs) {
         if (dateKey) zoneDates[zone].push(dateKey);
     });
 
-    const noDatesLabel = t ? t("chart_no_dates_window") : "No dates in current window.";
-    const zoneClickText = t ? t("chart_click_zone_bar") : "Click a zone bar to view specific dates.";
+    const noDatesLabel = t ? t("charts_general.chart_no_dates_window") : "No dates in current window.";
+    const zoneClickText = t ? t("charts_general.chart_click_zone_bar") : "Click a zone bar to view specific dates.";
 
     if (detailsEl) {
         detailsEl.innerHTML = zoneClickText;
@@ -287,7 +287,7 @@ function renderEnergyZoneChart(logs) {
         data: {
             labels: zoneOrder.map(z => zoneTranslationMap[z] || z),
             datasets: [{
-                label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_energy_sessions') : 'Sessions',
+                label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('charts_general.chart_energy_sessions') : 'Sessions',
                 data: zoneOrder.map(z => zones[z]),
                 backgroundColor: [withAlpha(COLORS.text, 0.6), COLORS.warning, COLORS.good, COLORS.accent, COLORS.excellent],
                 borderRadius: 4
@@ -345,9 +345,9 @@ function renderIdentityChart(logs) {
         charts.identity = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: [(window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_id_no_data') : noDataLabel],
+                labels: [(window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('charts_general.chart_id_no_data') : noDataLabel],
                 datasets: [{
-                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_id_alignment') : alignScoreLabel,
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('charts_general.chart_id_alignment') : alignScoreLabel,
                     data: [0],
                     backgroundColor: withAlpha(COLORS.grid, 0.35)
                 }]
@@ -362,7 +362,7 @@ function renderIdentityChart(logs) {
         return;
     }
 
-    const labels = sortedWeeks.map((w) => (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t("week_label", { week: w }) : `Week ${w}`);
+    const labels = sortedWeeks.map((w) => (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t("ui.week_label", { week: w }) : `Week ${w}`);
     const avgScores = sortedWeeks.map((w) => weeklyIdentity[w].sum / weeklyIdentity[w].count);
     const counts = sortedWeeks.map((w) => weeklyIdentity[w].count);
     const targetLine = sortedWeeks.map(() => 4);
@@ -385,7 +385,7 @@ function renderIdentityChart(logs) {
             datasets: [
                 {
                     type: 'bar',
-                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('chart_id_weekly_avg') : weeklyAvgLabel,
+                    label: (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t('charts_general.chart_id_weekly_avg') : weeklyAvgLabel,
                     data: avgScores,
                     backgroundColor: avgScores.map((score) => {
                         if (score >= 4) return withAlpha(idTheme.excellent, 0.67);
@@ -486,12 +486,12 @@ function renderCandlestickChart(logs) {
     const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
 
     const tCandle = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
-    const wickLabel = tCandle ? tCandle('chart_ohlc_wick') : "Wick";
-    const bodyLabel = tCandle ? tCandle('chart_ohlc_body') : "Body";
-    const highLabel = tCandle ? tCandle('chart_ohlc_high') : "High";
-    const openLabel = tCandle ? tCandle('chart_ohlc_open') : "Open";
-    const closeLabel = tCandle ? tCandle('chart_ohlc_close') : "Close";
-    const lowLabel = tCandle ? tCandle('chart_ohlc_low') : "Low";
+    const wickLabel = tCandle ? tCandle('ui.chart_wick') : "Wick";
+    const bodyLabel = tCandle ? tCandle('ui.chart_body') : "Body";
+    const highLabel = tCandle ? tCandle('ui.chart_high') : "High";
+    const openLabel = tCandle ? tCandle('ui.chart_open') : "Open";
+    const closeLabel = tCandle ? tCandle('ui.chart_close') : "Close";
+    const lowLabel = tCandle ? tCandle('ui.chart_low') : "Low";
 
     sorted.forEach(r => {
         const w = getWeekNumber(r.date);
@@ -731,7 +731,14 @@ function renderHourDistChart(logs) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const bins = ["<4h", "4-6h", "6-8h", "8-9h", "9h+"];
+    const tDist = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+    const bins = [
+        tDist ? tDist("chart_dist_less_4") : "<4h",
+        tDist ? tDist("chart_dist_4_6") : "4-6h",
+        tDist ? tDist("chart_dist_6_8") : "6-8h",
+        tDist ? tDist("chart_dist_8_9") : "8-9h",
+        tDist ? tDist("chart_dist_9_plus") : "9h+"
+    ];
     const counts = [0, 0, 0, 0, 0];
 
     logs.forEach(l => {
@@ -835,3 +842,15 @@ function renderWeeklyEffortChart(logs) {
         }
     });
 }
+
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.boostColor = window.boostColor || boostColor; }
+if(typeof window !== "undefined") { window.withAlpha = window.withAlpha || withAlpha; }
+if(typeof window !== "undefined") { window.renderTrajectoryChart = window.renderTrajectoryChart || renderTrajectoryChart; }
+if(typeof window !== "undefined") { window.renderEnergyZoneChart = window.renderEnergyZoneChart || renderEnergyZoneChart; }
+if(typeof window !== "undefined") { window.renderIdentityChart = window.renderIdentityChart || renderIdentityChart; }
+if(typeof window !== "undefined") { window.renderCandlestickChart = window.renderCandlestickChart || renderCandlestickChart; }
+if(typeof window !== "undefined") { window.renderContextualCharts = window.renderContextualCharts || renderContextualCharts; }
+if(typeof window !== "undefined") { window.renderRadarChart = window.renderRadarChart || renderRadarChart; }
+if(typeof window !== "undefined") { window.renderHourDistChart = window.renderHourDistChart || renderHourDistChart; }
+if(typeof window !== "undefined") { window.renderWeeklyEffortChart = window.renderWeeklyEffortChart || renderWeeklyEffortChart; }
