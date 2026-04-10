@@ -196,3 +196,15 @@ assert.strictEqual(getWeekNumber("2026-01-26"), 1);
 assert.strictEqual(getWeekNumber("2026-02-02"), 2);
 
 console.log("All unified telemetry logic tests passed.");
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.pad2 = window.pad2 || pad2; }
+if(typeof window !== "undefined") { window.toGmt8DateKey = window.toGmt8DateKey || toGmt8DateKey; }
+if(typeof window !== "undefined") { window.parseDateKeyGmt8 = window.parseDateKeyGmt8 || parseDateKeyGmt8; }
+if(typeof window !== "undefined") { window.addDaysGmt8 = window.addDaysGmt8 || addDaysGmt8; }
+if(typeof window !== "undefined") { window.diffDaysGmt8 = window.diffDaysGmt8 || diffDaysGmt8; }
+if(typeof window !== "undefined") { window.getGmt8Weekday = window.getGmt8Weekday || getGmt8Weekday; }
+if(typeof window !== "undefined") { window.isWorkdayGmt8 = window.isWorkdayGmt8 || isWorkdayGmt8; }
+if(typeof window !== "undefined") { window.getWeekNumber = window.getWeekNumber || getWeekNumber; }
+if(typeof window !== "undefined") { window.normalizeForecastLogs = window.normalizeForecastLogs || normalizeForecastLogs; }
+if(typeof window !== "undefined") { window.calculateForecastUnified = window.calculateForecastUnified || calculateForecastUnified; }
+if(typeof window !== "undefined") { window.buildTrajectorySeries = window.buildTrajectorySeries || buildTrajectorySeries; }

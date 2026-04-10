@@ -34,6 +34,7 @@
   /* global fallback font */
   --font-body: "JetBrains Mono Nerd Font", "Noto Sans", monospace;
   --font-heading: "JetBrains Mono Nerd Font", "Noto Sans", monospace;
+  --led-glow: 0 0 10px var(--accent);
 }
 
 /* 2. Cadillac Overrides */
@@ -909,69 +910,12 @@
 
 [data-theme="ztmy"] body {
   background-color: var(--ztmy-black) !important;
-  position: relative;
-  isolation: isolate;
+  background-image: radial-gradient(rgba(142, 110, 186, 0.3) 2px, transparent 0) !important;
+  background-size: 30px 30px !important;
+  background-position: -5px -5px !important;
+  background-attachment: fixed !important;
 }
 
-[data-theme="ztmy"] body::before {
-  content: "";
-  position: fixed;
-  inset: -50px;
-  z-index: -1;
-  --c: 7px;
-  background-color: var(--ztmy-black);
-  background-image: 
-    radial-gradient(circle at 50% 50%, #0000 1.5px, var(--ztmy-black) 0 var(--c), #0000 var(--c)),
-    radial-gradient(circle at 50% 50%, #0000 1.5px, var(--ztmy-black) 0 var(--c), #0000 var(--c)),
-    radial-gradient(circle at 50% 50%, var(--ztmy-red), rgba(253, 26, 46, 0) 60%),
-    radial-gradient(circle at 50% 50%, var(--accent-aux), rgba(216, 181, 162, 0) 60%),
-    radial-gradient(circle at 50% 50%, var(--ztmy-green), rgba(135, 192, 122, 0) 60%),
-    radial-gradient(ellipse at 50% 50%, var(--ztmy-purple), rgba(142, 110, 186, 0) 60%);
-  background-size:
-    12px 20.7846097px,
-    12px 20.7846097px,
-    200% 200%,
-    200% 200%,
-    200% 200%,
-    200% 20.7846097px;
-  --p: 0px 0px, 6px 10.39230485px;
-  background-position:
-    var(--p),
-    0% 0%,
-    0% 0%,
-    0% 0%,
-    0% 0%,
-    0% 0%;
-  animation:
-    ztmy-wee 40s linear infinite,
-    ztmy-filt 6s linear infinite;
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-@keyframes ztmy-filt {
-  0% { filter: hue-rotate(0deg); }
-  to { filter: hue-rotate(360deg); }
-}
-
-@keyframes ztmy-wee {
-  0% {
-    background-position:
-      var(--p),
-      800% 400%,
-      1000% -400%,
-      -1200% -600%,
-      400% 41.5692194px;
-  }
-  to {
-    background-position:
-      var(--p),
-      0% 0%,
-      0% 0%,
-      0% 0%,
-      0% 0%;
-  }
-}
 
 [data-theme="ztmy"] .card,
 [data-theme="ztmy"] .stat-card,

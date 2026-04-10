@@ -1,10 +1,10 @@
-﻿/**
+/**
  * DTR STORAGE AUX MODULE
  * Non-core storage utilities: migration, optimizer, restore, visualizer, and batch selectors.
  */
 
 function getStorageEligibleRecordEntries(action = "all") {
-    const entries = (dailyRecords || []).map((record, index) => ({ record, index }));
+    const entries = (Store.getRecords() || []).map((record, index) => ({ record, index }));
     if (action === "optimize") {
         return entries.filter((e) =>
             e.record && ((e.record.imageIds && e.record.imageIds.length) || (e.record.images && e.record.images.length))
@@ -37,7 +37,7 @@ function refreshStorageActionSelectors() {
     single.innerHTML = "";
     const allOption = document.createElement("option");
     allOption.value = "__ALL__";
-    const allEligibleText =  "All Eligible Records";
+    const allEligibleText = window.DTRI18N ? window.DTRI18N.t("all_eligible_records") : "All Eligible Records";
     allOption.textContent = `${allEligibleText} (${entries.length})`;
     single.appendChild(allOption);
 
@@ -99,42 +99,39 @@ function getSelectedStorageTargetRecords(action = "all") {
 
 async function transferRecordsToIndexedDB(buttonEl) {
     if (typeof saveRecordsToStore !== "function") {
-        alert("IndexedDB record store is unavailable in this browser.");
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        alert(t ? t('idb_unavailable') : "IndexedDB record store is unavailable in this browser.");
         return;
     }
-
-    let localRecords = [];
-    try {
-        localRecords = JSON.parse(localStorage.getItem("dtr") || "[]");
-    } catch (_) {
-        localRecords = [];
-    }
-    if (!Array.isArray(localRecords) || !localRecords.length) {
-        alert("No localStorage records found to transfer.");
-        return;
-    }
-
-    const sourceRecords = normalizeTransferRecords(localRecords);
-    if (!sourceRecords.length) {
-        alert("No valid localStorage records found to transfer.");
-        return;
-    }
-
-    const transferMode = await chooseTransferModeModal({
-        sourceLabel: "localStorage",
-        targetLabel: "IndexedDB",
-        recordCount: sourceRecords.length
-    });
-    if (!transferMode || transferMode.mode === "abort") return;
 
     const btn = buttonEl && buttonEl.tagName === "BUTTON" ? buttonEl : null;
     const originalText = btn ? btn.innerText : "";
     if (btn) {
         btn.disabled = true;
-        btn.innerText = "Transferring...";
+        btn.innerText = "⏳";
     }
 
     try {
+        let localRecords = [];
+        try {
+            localRecords = JSON.parse(localStorage.getItem("dtr") || "[]");
+        } catch (_) {
+            localRecords = [];
+        }
+
+        const sourceRecords = normalizeTransferRecords(localRecords);
+        if (!sourceRecords.length) {
+            alert("No localStorage records found to transfer.");
+            return;
+        }
+
+        const transferMode = await chooseTransferModeModal({
+            sourceLabel: "localStorage",
+            targetLabel: "IndexedDB",
+            recordCount: sourceRecords.length
+        });
+        if (!transferMode || transferMode.mode === "abort") return;
+
         let existingIdbRecords = [];
         try {
             const current = await getRecordsFromStore();
@@ -149,28 +146,28 @@ async function transferRecordsToIndexedDB(buttonEl) {
             ? await migrateTransferRecordImagesToIdb(nextRecords)
             : { records: normalizeTransferRecords(nextRecords), migratedImages: 0, failedImages: 0 };
 
-        dailyRecords = imageMigration.records;
+        Store.setRecords(imageMigration.records);
         if (transferMode.mode === "replace" && typeof deleteImagesFromStore === "function") {
             const oldIds = collectTransferRecordImageIds(existingIdbRecords);
-            const nextIds = collectTransferRecordImageIds(dailyRecords);
+            const nextIds = collectTransferRecordImageIds(Store.getRecords());
             const idsToDelete = oldIds.filter((id) => !nextIds.includes(id));
             if (idsToDelete.length) {
                 try { await deleteImagesFromStore(idsToDelete); } catch (_) {}
             }
         }
         if (typeof persistDTR === "function") {
-            const ok = await persistDTR(dailyRecords);
+            const ok = await persistDTR(Store.getRecords());
             if (!ok) throw new Error("Failed to persist transferred records.");
         } else {
-            await saveRecordsToStore(dailyRecords);
+            await saveRecordsToStore(Store.getRecords());
         }
         loadReflectionViewer();
-        if (dailyRecords.length) showSummary(dailyRecords[dailyRecords.length - 1]);
+        if (Store.getRecords().length) showSummary(Store.getRecords()[Store.getRecords().length - 1]);
         if (typeof renderDailyGraph === "function") renderDailyGraph();
         if (typeof renderWeeklyGraph === "function") renderWeeklyGraph();
         if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
         alert(
-            `Transfer complete: ${dailyRecords.length} record(s) in IndexedDB ` +
+            `Transfer complete: ${Store.getRecords().length} record(s) in IndexedDB ` +
             `(replace mode).` +
             (transferMode.includeImages
                 ? `\nImages migrated to IndexedDB: ${imageMigration.migratedImages}` +
@@ -189,7 +186,8 @@ async function transferRecordsToIndexedDB(buttonEl) {
 
 async function transferRecordsToLocalStorage(buttonEl) {
     if (typeof getRecordsFromStore !== "function") {
-        alert("IndexedDB record store is unavailable in this browser.");
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+        alert(t ? t('idb_unavailable') : "IndexedDB record store is unavailable in this browser.");
         return;
     }
 
@@ -197,7 +195,7 @@ async function transferRecordsToLocalStorage(buttonEl) {
     const originalText = btn ? btn.innerText : "";
     if (btn) {
         btn.disabled = true;
-        btn.innerText = "Transferring...";
+        btn.innerText = "⏳";
     }
 
     try {
@@ -216,7 +214,7 @@ async function transferRecordsToLocalStorage(buttonEl) {
 
         let existingLocalRecords = [];
         try {
-            existingLocalRecords = normalizeTransferRecords(JSON.parse(localStorage.getItem("dtr") || "[]"));
+            existingLocalRecords = normalizeTransferRecords(JSON.parse(localStorage.getItem("localStorage") || "[]"));
         } catch (_) {
             existingLocalRecords = [];
         }
@@ -229,14 +227,14 @@ async function transferRecordsToLocalStorage(buttonEl) {
         if (!safeSetDTR(imageExpansion.records)) {
             throw new Error("Failed to write records to localStorage.");
         }
-        dailyRecords = imageExpansion.records;
+        Store.setRecords(imageExpansion.records);
         loadReflectionViewer();
-        if (dailyRecords.length) showSummary(dailyRecords[dailyRecords.length - 1]);
+        if (Store.getRecords().length) showSummary(Store.getRecords()[Store.getRecords().length - 1]);
         if (typeof renderDailyGraph === "function") renderDailyGraph();
         if (typeof renderWeeklyGraph === "function") renderWeeklyGraph();
         if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
         alert(
-            `Transfer complete: ${dailyRecords.length} record(s) in localStorage ` +
+            `Transfer complete: ${Store.getRecords().length} record(s) in localStorage ` +
             `(replace mode).` +
             (transferMode.includeImages
                 ? `\nImages embedded to localStorage records: ${imageExpansion.embeddedImages}` +
@@ -293,8 +291,15 @@ function normalizeTransferRecords(records) {
 function backupTransferSnapshot(sourceLabel, records) {
     try {
         const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const key = `dtr_backup_${sourceLabel}_${stamp}`;
+        const prefix = `dtr_backup_${sourceLabel}_`;
+        const key = `${prefix}${stamp}`;
         localStorage.setItem(key, JSON.stringify(Array.isArray(records) ? records : []));
+
+        // Limit backups to last 3 per category to manage storage
+        const allKeys = Object.keys(localStorage).filter(k => k.startsWith(prefix)).sort();
+        if (allKeys.length > 3) {
+            allKeys.slice(0, allKeys.length - 3).forEach(k => localStorage.removeItem(k));
+        }
     } catch (e) {
         console.warn("Unable to create transfer backup snapshot:", e);
     }
@@ -342,17 +347,17 @@ async function clearDuplicateIndexedDbRecords(buttonEl) {
 
         backupTransferSnapshot("idb_dedupe", idbRecords);
 
-        dailyRecords = imageDedupe.records;
+        Store.setRecords(imageDedupe.records);
         if (typeof persistDTR === "function") {
-            const ok = await persistDTR(dailyRecords);
+            const ok = await persistDTR(Store.getRecords());
             if (!ok) throw new Error("Failed to persist deduplicated records.");
         } else {
-            await saveRecordsToStore(dailyRecords);
-            safeSetDTR(dailyRecords);
+            await saveRecordsToStore(Store.getRecords());
+            safeSetDTR(Store.getRecords());
         }
 
         if (typeof deleteImagesFromStore === "function") {
-            const stillReferenced = new Set(collectTransferRecordImageIds(dailyRecords));
+            const stillReferenced = new Set(collectTransferRecordImageIds(Store.getRecords()));
             const candidates = [...dedupe.orphanImageIds, ...imageDedupe.duplicateImageIds];
             const idsToDelete = [...new Set(candidates)].filter((id) => !stillReferenced.has(id));
             if (idsToDelete.length) {
@@ -361,7 +366,7 @@ async function clearDuplicateIndexedDbRecords(buttonEl) {
         }
 
         loadReflectionViewer();
-        if (dailyRecords.length) showSummary(dailyRecords[dailyRecords.length - 1]);
+        if (Store.getRecords().length) showSummary(Store.getRecords()[Store.getRecords().length - 1]);
         if (typeof renderDailyGraph === "function") renderDailyGraph();
         if (typeof renderWeeklyGraph === "function") renderWeeklyGraph();
         if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
@@ -371,7 +376,7 @@ async function clearDuplicateIndexedDbRecords(buttonEl) {
             `IndexedDB dedupe complete.\n` +
             `Removed duplicate records: ${totalRecordDuplicates}\n` +
             `Removed duplicate pictures: ${totalImageDuplicates}\n` +
-            `Records kept: ${dailyRecords.length}`
+            `Records kept: ${Store.getRecords().length}`
         );
     } catch (err) {
         alert("Failed to clear IndexedDB duplicates: " + (err && err.message ? err.message : err));
@@ -455,6 +460,8 @@ async function buildImageSignature(dataUrl) {
             // Fall back to lightweight signature below.
         }
     }
+    // NOTE: SHA-256 is precise. This fallback fp fingerprint is intentional for lightweight 
+    // browser detection, but may produce rare false negatives for images with identical head/tails.
     return `fp:${dataUrl.length}:${dataUrl.slice(0, 128)}:${dataUrl.slice(-128)}`;
 }
 
@@ -633,6 +640,7 @@ async function expandTransferRecordImagesFromIdb(records) {
 
 function chooseTransferModeModal({ sourceLabel, targetLabel, recordCount }) {
     return new Promise((resolve) => {
+        const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
         let settled = false;
         const finish = (mode) => {
             if (settled) return;
@@ -665,20 +673,26 @@ function chooseTransferModeModal({ sourceLabel, targetLabel, recordCount }) {
             "color:var(--text)"
         ].join(";");
 
-        const transferTitle = "Transfer Records";
+        const transferTitle = t ? t('transfer_records_title') : "Transfer Records";
+        const helpText = t ? t('transfer_records_help', { count: recordCount, source: sourceLabel, target: targetLabel }) : `Move <strong>${recordCount}</strong> valid record(s) from <strong>${sourceLabel}</strong> to <strong>${targetLabel}</strong>.`;
+        const replaceHelpText = t ? t('transfer_replace_help') : "Replace overwrites the entire target dataset.";
+        const includeImagesLabel = t ? t('transfer_include_images') : "Include images in transfer";
+        const abortBtnText = t ? t('abort') : "Abort";
+        const replaceBtnText = t ? t('transfer_replace_target') : "Replace Target";
+
         panel.innerHTML = `
             <h3 style="margin:0 0 10px 0; color:var(--accent);">${transferTitle}</h3>
-            <p style="margin:0 0 8px 0;">Move <strong>${recordCount}</strong> valid record(s) from <strong>${sourceLabel}</strong> to <strong>${targetLabel}</strong>.</p>
+            <p style="margin:0 0 8px 0;">${helpText}</p>
             <p style="margin:0 0 12px 0; opacity:0.85; font-size:0.92em;">
-              Replace overwrites the entire target dataset.
+              ${replaceHelpText}
             </p>
             <label style="display:flex; align-items:center; gap:8px; margin:0 0 12px 0; font-size:0.92em;">
                 <input id="transferIncludeImages" type="checkbox" checked>
-                Include images in transfer
+                ${includeImagesLabel}
             </label>
             <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
-                <button id="transferAbortBtn" type="button" style="background:transparent; color:var(--text); border:1px solid var(--border);">Abort</button>
-                <button id="transferReplaceBtn" type="button" style="background:var(--accent); color:#fff;">Replace Target</button>
+                <button id="transferAbortBtn" type="button" style="background:transparent; color:var(--text); border:1px solid var(--border);">${abortBtnText}</button>
+                <button id="transferReplaceBtn" type="button" style="background:var(--accent); color:#fff;">${replaceBtnText}</button>
             </div>
         `;
 
@@ -692,6 +706,9 @@ function chooseTransferModeModal({ sourceLabel, targetLabel, recordCount }) {
         });
     });
 }
+ 
+
+
  
 const STORAGE_LIMIT_BYTES = 5 * 1024 * 1024; // ~5 MB typical localStorage limit
 const IDB_QUOTA_DISPLAY_CAP_BYTES = 10 * 1024 * 1024 * 1024; // Normalize display across browsers/devices
@@ -711,12 +728,14 @@ function formatBytesAdaptive(bytes) {
 
 function getStorageInfo() {
     let dtrString = localStorage.getItem("dtr");
-    if (!dtrString && typeof dailyRecords !== "undefined") {
-        try { dtrString = JSON.stringify(dailyRecords); } catch(e) {}
+    if (!dtrString && typeof Store.getRecords() !== "undefined") {
+        try { dtrString = JSON.stringify(Store.getRecords()); } catch(e) {}
     }
     if (!dtrString) dtrString = "[]";
     
-    // Browsers natively measure localStorage limits based on UTF-16 string length (2 bytes per character)
+    // Browsers naturally measure localStorage limits by UTF-16 character count (2 bytes per unit).
+    // NOTE: This estimate accounts for BMP characters; supplementary planes (emojis, etc.) 
+    // are surrogate pairs (4 bytes) but stay accurate for typical DTR text content.
     const usedBytes = dtrString.length * 2;
     
     const usedMB = (usedBytes / 1024 / 1024).toFixed(2);
@@ -735,6 +754,8 @@ function updateStorageVisualizer() {
     const el = document.getElementById("storageVisualizer");
     if (!el) return;
 
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+
     try {
         const { usedBytes, usedMB, limitMB, percent } = getStorageInfo();
 
@@ -743,102 +764,118 @@ function updateStorageVisualizer() {
         const bar = document.getElementById("storageBar");
         const status = document.getElementById("storageStatus");
 
-    const idbUsedText = document.getElementById("storageIdbUsedText");
-    const idbQuotaText = document.getElementById("storageIdbQuotaText");
-    const idbBar = document.getElementById("storageIdbBar");
-    const barTip = document.getElementById("storageBarTip");
-    const idbBarTip = document.getElementById("storageIdbBarTip");
+        const idbUsedText = document.getElementById("storageIdbUsedText");
+        const idbQuotaText = document.getElementById("storageIdbQuotaText");
+        const idbBar = document.getElementById("storageIdbBar");
+        const barTip = document.getElementById("storageBarTip");
+        const idbBarTip = document.getElementById("storageIdbBarTip");
 
-    if (usedText) usedText.textContent = `${usedMB} MB`;
-    if (limitText) limitText.textContent = `${limitMB} MB`;
-    const recordsInfo = `${formatBytesAdaptive(usedBytes)} used of ${formatBytesAdaptive(STORAGE_LIMIT_BYTES)} (${Math.round(percent)}%)`;
-    if (usedText) usedText.title = `Records usage: ${recordsInfo}`;
-    if (limitText) limitText.title = `Records capacity: ${formatBytesAdaptive(STORAGE_LIMIT_BYTES)}`;
-    if (bar) bar.title = `Records: ${recordsInfo}`;
-    if (barTip) barTip.textContent = recordsInfo;
-    if (bar) {
-        bar.style.width = `${percent}%`;
-        bar.setAttribute("aria-valuenow", Math.round(percent));
-    }
-    if (el) {
-        el.setAttribute("data-percent", percent >= 95 ? "critical" : percent >= 80 ? "high" : "normal");
-    }
+        if (usedText) usedText.textContent = `${usedMB} MB`;
+        if (limitText) limitText.textContent = `${limitMB} MB`;
 
-    if (status) {
-        if (percent >= 95) {
-            const statusText = "Storage almost full! Run Optimize DB or remove images.";
-            status.textContent = statusText;
-            status.style.color = "var(--accent)";
-        } else if (percent >= 80) {
-            const statusText = "Running low on storage. Consider optimizing or removing images.";
-            status.textContent = statusText;
-            status.style.color = "var(--color-warning)";
-        } else {
-            const statusText = percent < 50 ? "Storage healthy" : "Storage usage moderate";
-            status.textContent = statusText;
-            status.style.color = "var(--color-good)";
+        // Localized info string: "5.00 MB used of 10.00 MB (50%)"
+        const usedOfText = t ? t('used_of') : 'used of';
+        const recordsInfo = `${formatBytesAdaptive(usedBytes)} ${usedOfText} ${formatBytesAdaptive(STORAGE_LIMIT_BYTES)} (${Math.round(percent)}%)`;
+
+        if (usedText) usedText.title = `${t ? t('storage_usage_label') : 'Records usage'}: ${recordsInfo}`;
+        if (limitText) limitText.title = `${t ? t('storage_capacity_label') : 'Records capacity'}: ${formatBytesAdaptive(STORAGE_LIMIT_BYTES)}`;
+        if (bar) bar.title = `${t ? t('storage_records_label') : 'Records'}: ${recordsInfo}`;
+
+        if (barTip) barTip.textContent = recordsInfo;
+        if (bar) {
+            bar.style.width = `${percent}%`;
+            bar.setAttribute("aria-valuenow", Math.round(percent));
         }
-    }
+        if (el) {
+            el.setAttribute("data-percent", percent >= 95 ? "critical" : percent >= 80 ? "high" : "normal");
+        }
 
-    if (typeof getImageStoreUsageBytes === "function" && typeof getImageStoreEstimate === "function") {
-        const idbSection = document.getElementById("storageIdbSection");
-        const idbStatus = document.getElementById("storageIdbStatus");
-        
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Storage check timed out")), 2000));
-        
-        Promise.race([
-            Promise.all([getImageStoreUsageBytes(), getImageStoreEstimate()]),
-            timeoutPromise
-        ]).then(([idbBytes, estimate]) => {
+        if (status) {
+            if (percent >= 100) {
+                status.textContent = t ? t('storage_full') : "Storage full! Run Optimize DB or remove images.";
+                status.style.color = "var(--accent)";
+                if (bar) bar.style.backgroundColor = "var(--accent)";
+            } else if (percent >= 75) {
+                status.textContent = t ? t('storage_running_low') : "Running low on storage. Consider optimizing or removing images.";
+                status.style.color = "var(--accent)";
+                if (bar) bar.style.backgroundColor = "var(--accent)";
+            } else if (percent >= 50) {
+                status.textContent = t ? t('storage_moderate') : "Storage usage moderate";
+                status.style.color = "var(--color-warning)";
+                if (bar) bar.style.backgroundColor = "var(--color-warning)";
+            } else {
+                status.textContent = t ? t('storage_healthy') : "Storage healthy";
+                status.style.color = "var(--color-good)";
+                if (bar) bar.style.backgroundColor = "var(--color-good)";
+            }
+        }
 
-            const idbMB = (idbBytes / 1024 / 1024).toFixed(2);
-            const rawQuota = Number(estimate && estimate.quota) || 0;
-            const effectiveQuota = rawQuota > 0
-                ? Math.min(rawQuota, IDB_QUOTA_DISPLAY_CAP_BYTES)
-                : IDB_QUOTA_DISPLAY_CAP_BYTES;
-            const quotaAdaptive = formatBytesAdaptive(effectiveQuota);
-            if (idbUsedText) idbUsedText.textContent = `${idbMB} MB`;
-            if (idbQuotaText) idbQuotaText.textContent = quotaAdaptive;
-            const idbPercent = Math.min(100, (idbBytes / effectiveQuota) * 100);
-            if (idbBar) {
-                idbBar.style.width = `${idbPercent}%`;
-                idbBar.setAttribute("aria-valuenow", Math.round(idbPercent));
-            }
-            const idbInfo = `${formatBytesAdaptive(idbBytes)} used of ${quotaAdaptive} (${Math.round(idbPercent)}%)`;
-            if (idbUsedText) idbUsedText.title = `IndexedDB usage: ${idbInfo}`;
-            if (idbQuotaText) {
-                const rawQuotaLabel = rawQuota > 0 ? formatBytesAdaptive(rawQuota) : "unavailable";
-                idbQuotaText.title = `IndexedDB capacity (normalized): ${quotaAdaptive}; raw browser estimate: ${rawQuotaLabel}`;
-            }
-            if (idbBar) idbBar.title = `IndexedDB: ${idbInfo}`;
-            if (idbBarTip) idbBarTip.textContent = idbInfo;
-            if (idbSection) {
-                idbSection.setAttribute("data-percent", idbPercent >= 95 ? "critical" : idbPercent >= 80 ? "high" : "normal");
-            }
-            if (idbStatus) {
-                if (idbPercent >= 95) {
-                    const idbStatusText = "Image storage almost full! Run Optimize DB or remove images.";
-                    idbStatus.textContent = idbStatusText;
-                    idbStatus.style.color = "var(--accent)";
-                } else if (idbPercent >= 80) {
-                    const idbStatusText = "Running low on image storage. Consider optimizing or removing images.";
-                    idbStatus.textContent = idbStatusText;
-                    idbStatus.style.color = "var(--color-warning)";
-                } else {
-                    const idbStatusText = idbPercent < 50 ? "Image storage healthy" : "Image storage usage moderate";
-                    idbStatus.textContent = idbStatusText;
-                    idbStatus.style.color = "var(--color-good)";
+        if (typeof getImageStoreUsageBytes === "function" && typeof getImageStoreEstimate === "function") {
+            const idbSection = document.getElementById("storageIdbSection");
+            const idbStatus = document.getElementById("storageIdbStatus");
+            
+            // Increased timeout to 4s to allow cursor iteration for large image stores without premature failure
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Storage check timed out")), 4000));
+            
+            Promise.race([
+                Promise.all([getImageStoreUsageBytes(), getImageStoreEstimate()]),
+                timeoutPromise
+            ]).then(([idbBytes, estimate]) => {
+                const idbMB = (idbBytes / 1024 / 1024).toFixed(2);
+                const rawQuota = Number(estimate && estimate.quota) || 0;
+                const effectiveQuota = rawQuota > 0
+                    ? Math.min(rawQuota, IDB_QUOTA_DISPLAY_CAP_BYTES)
+                    : IDB_QUOTA_DISPLAY_CAP_BYTES;
+                const quotaAdaptive = formatBytesAdaptive(effectiveQuota);
+                if (idbUsedText) idbUsedText.textContent = `${idbMB} MB`;
+                if (idbQuotaText) idbQuotaText.textContent = quotaAdaptive;
+                const idbPercent = Math.min(100, (idbBytes / effectiveQuota) * 100);
+                if (idbBar) {
+                    idbBar.style.width = `${idbPercent}%`;
+                    idbBar.setAttribute("aria-valuenow", Math.round(idbPercent));
                 }
-            }
-        }).catch(() => {
-            if (idbUsedText) idbUsedText.textContent = "—";
-            if (idbQuotaText) idbQuotaText.textContent = "—";
-            const idbStatusText = "Unable to read image storage.";
-            if (idbStatus) idbStatus.textContent = idbStatusText;
-            const idbTipText = "IndexedDB usage unavailable";
-            if (idbBarTip) idbBarTip.textContent = idbTipText;
-        });
-    }
+                const idbUsedOfText = t ? t('used_of') : 'used of';
+                const idbInfo = `${formatBytesAdaptive(idbBytes)} ${idbUsedOfText} ${quotaAdaptive} (${Math.round(idbPercent)}%)`;
+                
+                if (idbUsedText) idbUsedText.title = `${t ? t('idb_usage_label') : 'IndexedDB usage'}: ${idbInfo}`;
+                if (idbQuotaText) {
+                    const rawQuotaLabel = rawQuota > 0 ? formatBytesAdaptive(rawQuota) : (t ? t('idb_none') : "unavailable");
+                    const idbCapLabel = t ? t('idb_capacity_label') : 'IndexedDB capacity (normalized)';
+                    const rawEstimateLabel = t ? t('idb_raw_estimate_label') : 'raw browser estimate';
+                    idbQuotaText.title = `${idbCapLabel}: ${quotaAdaptive}; ${rawEstimateLabel}: ${rawQuotaLabel}`;
+                }
+                if (idbBar) idbBar.title = `IndexedDB: ${idbInfo}`;
+                if (idbBarTip) idbBarTip.textContent = idbInfo;
+                if (idbSection) {
+                    idbSection.setAttribute("data-percent", idbPercent >= 95 ? "critical" : idbPercent >= 80 ? "high" : "normal");
+                }
+                if (idbStatus) {
+                    if (idbPercent >= 100) {
+                        idbStatus.textContent = t ? t('image_storage_full') : "Image storage full! Run Optimize DB or remove images.";
+                        idbStatus.style.color = "var(--accent)";
+                        if (idbBar) idbBar.style.backgroundColor = "var(--accent)";
+                    } else if (idbPercent >= 75) {
+                        idbStatus.textContent = t ? t('image_storage_running_low') : "Running low on image storage. Consider optimizing or removing images.";
+                        idbStatus.style.color = "var(--accent)";
+                        if (idbBar) idbBar.style.backgroundColor = "var(--accent)";
+                    } else if (idbPercent >= 50) {
+                        idbStatus.textContent = t ? t('image_storage_moderate') : "Image storage usage moderate";
+                        idbStatus.style.color = "var(--color-warning)";
+                        if (idbBar) idbBar.style.backgroundColor = "var(--color-warning)";
+                    } else {
+                        idbStatus.textContent = t ? t('image_storage_healthy') : "Image storage healthy";
+                        idbStatus.style.color = "var(--color-good)";
+                        if (idbBar) idbBar.style.backgroundColor = "var(--color-good)";
+                    }
+                }
+            }).catch(() => {
+                if (idbUsedText) idbUsedText.textContent = "—";
+                if (idbQuotaText) idbQuotaText.textContent = "—";
+                if (idbStatus) idbStatus.textContent = t ? t('unable_to_read_storage') : "Unable to read image storage.";
+                const idbTipText = t ? t('idb_usage_unavailable') : "IndexedDB usage unavailable";
+                if (idbBarTip) idbBarTip.textContent = idbTipText;
+            });
+        }
 
     if (typeof refreshStorageActionSelectors === "function") {
         refreshStorageActionSelectors();
@@ -854,7 +891,7 @@ function updateStorageVisualizer() {
 }
 
 async function optimizeStorage() {
-    if (!dailyRecords.length) return alert("No records found to optimize.");
+    if (!Store.getRecords().length) return alert("No records found to optimize.");
     
     const targetRecords = getSelectedStorageTargetRecords("optimize");
     if (!targetRecords.length) return alert("No eligible records selected for compression.");
@@ -877,7 +914,8 @@ async function optimizeStorage() {
         if (!force && (now - lastUiTick) < uiTickMs) return;
         lastUiTick = now;
         if (liveStatusEl) {
-            const optText = "Optimizing images...";
+            const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+            const optText = t ? t('optimizing_images_status') : "Optimizing images...";
             liveStatusEl.textContent = `${optText} ${recordsDone}/${originalCount} record(s), ${imagesProcessed} image(s) compressed`;
         }
         if (typeof loadReflectionViewer === "function") {
@@ -965,18 +1003,18 @@ async function optimizeStorage() {
             }
         }
 
-        if (!await persistDTR(dailyRecords)) {
+        if (!await persistDTR(Store.getRecords())) {
             alert("Optimization ran but storage is still full. Try deleting some records or removing images.");
             return;
         }
         if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
         refreshStorageActionSelectors();
-        await refreshLiveOptimizeUi(dailyRecords[dailyRecords.length - 1], true);
+        await refreshLiveOptimizeUi(Store.getRecords()[Store.getRecords().length - 1], true);
 
         alert(`Optimization complete!\n- Records processed: ${originalCount}\n- Images found and lightened: ${imagesProcessed}\n- Your storage is now much cleaner.`);
         
         loadReflectionViewer();
-        if (dailyRecords.length) showSummary(dailyRecords[dailyRecords.length - 1]);
+        if (Store.getRecords().length) showSummary(Store.getRecords()[Store.getRecords().length - 1]);
     } catch (err) {
         alert("Optimization failed: " + err.message);
     } finally {
@@ -984,7 +1022,7 @@ async function optimizeStorage() {
     }
 }
 async function restoreOptimizedImages(buttonEl) {
-    if (!dailyRecords.length) return alert("No records found.");
+    if (!Store.getRecords().length) return alert("No records found.");
 
     const targetRecords = getSelectedStorageTargetRecords("restore");
     const imageIds = [...new Set((targetRecords || []).flatMap((r) => r.imageIds || []))];
@@ -1015,7 +1053,8 @@ async function restoreOptimizedImages(buttonEl) {
         if (!force && (now - lastUiTick) < uiTickMs) return;
         lastUiTick = now;
         if (liveStatusEl) {
-            const restoreText = "Restoring originals...";
+            const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
+            const restoreText = t ? t('restoring_originals_status') : "Restoring originals...";
             liveStatusEl.textContent = `${restoreText} ${processedCount}/${totalIds} image(s), ${restoredCount} restored`;
         }
         if (typeof loadReflectionViewer === "function") {
@@ -1044,8 +1083,8 @@ async function restoreOptimizedImages(buttonEl) {
         if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
         loadReflectionViewer();
         refreshStorageActionSelectors();
-        if (dailyRecords.length) showSummary(dailyRecords[dailyRecords.length - 1]);
-        await refreshLiveRestoreUi(dailyRecords[dailyRecords.length - 1], true);
+        if (Store.getRecords().length) showSummary(Store.getRecords()[Store.getRecords().length - 1]);
+        await refreshLiveRestoreUi(Store.getRecords()[Store.getRecords().length - 1], true);
 
         if (restoredCount > 0) {
             alert(`Restore complete. ${restoredCount} image(s) restored to original quality from IndexedDB backup.`);
@@ -1058,3 +1097,30 @@ async function restoreOptimizedImages(buttonEl) {
         if (btn) btn.innerText = originalText;
     }
 }
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.getStorageEligibleRecordEntries = window.getStorageEligibleRecordEntries || getStorageEligibleRecordEntries; }
+if(typeof window !== "undefined") { window.buildStorageRecordOptionLabel = window.buildStorageRecordOptionLabel || buildStorageRecordOptionLabel; }
+if(typeof window !== "undefined") { window.refreshStorageActionSelectors = window.refreshStorageActionSelectors || refreshStorageActionSelectors; }
+if(typeof window !== "undefined") { window.toggleStorageBatchMode = window.toggleStorageBatchMode || toggleStorageBatchMode; }
+if(typeof window !== "undefined") { window.getSelectedStorageTargetRecords = window.getSelectedStorageTargetRecords || getSelectedStorageTargetRecords; }
+if(typeof window !== "undefined") { window.transferRecordsToIndexedDB = window.transferRecordsToIndexedDB || transferRecordsToIndexedDB; }
+if(typeof window !== "undefined") { window.transferRecordsToLocalStorage = window.transferRecordsToLocalStorage || transferRecordsToLocalStorage; }
+if(typeof window !== "undefined") { window.normalizeTransferRecord = window.normalizeTransferRecord || normalizeTransferRecord; }
+if(typeof window !== "undefined") { window.normalizeTransferRecords = window.normalizeTransferRecords || normalizeTransferRecords; }
+if(typeof window !== "undefined") { window.backupTransferSnapshot = window.backupTransferSnapshot || backupTransferSnapshot; }
+if(typeof window !== "undefined") { window.clearDuplicateIndexedDbRecords = window.clearDuplicateIndexedDbRecords || clearDuplicateIndexedDbRecords; }
+if(typeof window !== "undefined") { window.dedupeRecordImageIdsByContent = window.dedupeRecordImageIdsByContent || dedupeRecordImageIdsByContent; }
+if(typeof window !== "undefined") { window.buildImageSignature = window.buildImageSignature || buildImageSignature; }
+if(typeof window !== "undefined") { window.dataUrlToBytes = window.dataUrlToBytes || dataUrlToBytes; }
+if(typeof window !== "undefined") { window.bytesToHex = window.bytesToHex || bytesToHex; }
+if(typeof window !== "undefined") { window.dedupeRecordsByDateKeepLatest = window.dedupeRecordsByDateKeepLatest || dedupeRecordsByDateKeepLatest; }
+if(typeof window !== "undefined") { window.migrateTransferRecordImagesToIdb = window.migrateTransferRecordImagesToIdb || migrateTransferRecordImagesToIdb; }
+if(typeof window !== "undefined") { window.collectTransferRecordImageIds = window.collectTransferRecordImageIds || collectTransferRecordImageIds; }
+if(typeof window !== "undefined") { window.expandTransferRecordImagesFromIdb = window.expandTransferRecordImagesFromIdb || expandTransferRecordImagesFromIdb; }
+if(typeof window !== "undefined") { window.chooseTransferModeModal = window.chooseTransferModeModal || chooseTransferModeModal; }
+if(typeof window !== "undefined") { window.formatBytesAdaptive = window.formatBytesAdaptive || formatBytesAdaptive; }
+if(typeof window !== "undefined") { window.getStorageInfo = window.getStorageInfo || getStorageInfo; }
+if(typeof window !== "undefined") { window.getStorageUsage = window.getStorageUsage || getStorageUsage; }
+if(typeof window !== "undefined") { window.updateStorageVisualizer = window.updateStorageVisualizer || updateStorageVisualizer; }
+if(typeof window !== "undefined") { window.optimizeStorage = window.optimizeStorage || optimizeStorage; }
+if(typeof window !== "undefined") { window.restoreOptimizedImages = window.restoreOptimizedImages || restoreOptimizedImages; }

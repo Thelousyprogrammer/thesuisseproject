@@ -1,4 +1,24 @@
-logs
+# Secrets and Credentials
+.env
+*.pem
+*.key
+
+# Dependencies (These are huge and can be reinstalled)
+node_modules/
+dist/
+build/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor Settings
+.vscode/
+.idea/
+
+# Log files
+*.log
+npm-debug.log*logs
 *.log
 
 # Ignore Files

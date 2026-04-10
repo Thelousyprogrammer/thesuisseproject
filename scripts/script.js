@@ -11,9 +11,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     // 1. Initial Data Sync
     if (typeof loadDTRRecords === "function") {
-        dailyRecords = await loadDTRRecords();
+        Store.setRecords(await loadDTRRecords());
     } else {
-        dailyRecords = JSON.parse(localStorage.getItem("dtr")) || [];
+        Store.setRecords(JSON.parse(localStorage.getItem("dtr")) || []);
     }
 
     // 2. Initial Theme Sync
@@ -63,9 +63,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     renderDailyGraph();
     renderWeeklyGraph();
 
-    if (dailyRecords.length) {
-        showSummary(dailyRecords[dailyRecords.length - 1]);
-        updateWeeklyCounter(dailyRecords[dailyRecords.length - 1].date);
+    if (Store.getRecords().length) {
+        showSummary(Store.getRecords()[Store.getRecords().length - 1]);
+        updateWeeklyCounter(Store.getRecords()[Store.getRecords().length - 1].date);
     } else {
         showSummary({});
         updateWeeklyCounter();
@@ -105,7 +105,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
         // Create a temporary record set for simulation
         const tempRecord = { date: dateVal, hours: hoursVal };
-        const mergedRecords = dailyRecords.filter(r => r.date !== dateVal);
+        const mergedRecords = Store.getRecords().filter(r => r.date !== dateVal);
         mergedRecords.push(tempRecord);
         mergedRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -130,6 +130,12 @@ document.addEventListener("dtr:languageChanged", () => {
     if (typeof updateReflectionWeekOptions === "function") updateReflectionWeekOptions();
     if (typeof updateExportWeekOptions === "function") updateExportWeekOptions();
     if (typeof loadReflectionViewer === "function") loadReflectionViewer();
+    if (typeof renderDailyGraph === "function") renderDailyGraph(Store.getRecords());
+    if (typeof renderWeeklyGraph === "function") renderWeeklyGraph(Store.getRecords());
+    if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
+    if (typeof showSummary === "function" && typeof currentSummaryRecord !== "undefined" && currentSummaryRecord) {
+        showSummary(currentSummaryRecord);
+    }
     if (typeof updateWeeklyCounter === "function") {
         const dateInput = document.getElementById("date");
         if (dateInput && dateInput.value) updateWeeklyCounter(dateInput.value);

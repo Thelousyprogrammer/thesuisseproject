@@ -34,7 +34,7 @@ function clearDTRForm() {
 function updateWeeklyCounter(dateInput) {
     if (!dateInput) return;
     const weekNum = getWeekNumber(dateInput);
-    const weekHours = dailyRecords
+    const weekHours = Store.getRecords()
         .filter(r => getWeekNumber(r.date) === weekNum)
         .reduce((sum, r) => sum + r.hours, 0);
 
@@ -45,33 +45,44 @@ function updateWeeklyCounter(dateInput) {
 
     const counterEl = document.getElementById("weeklyCounter");
     if (counterEl) {
-        const weekLabel = `Week ${weekNum}`;
-        counterEl.innerHTML = `${weekLabel} Hours: <span style="color:${color}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span>`;
+        const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
+        const weekHoursLabel = t ? t("week_hours_label", { week: weekNum }) : `Week ${weekNum} Hours`;
+        counterEl.innerHTML = `<span data-i18n="week_hours_label" data-i18n-args='{"week":${weekNum}}'>${weekHoursLabel}</span>: <span style="color:${color}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span>`;
+        
+        if (window.DTRI18N && typeof window.DTRI18N.applyTranslations === "function") {
+            window.DTRI18N.applyTranslations();
+        }
     }
 }
 
 function showSummary(record) {
+    currentSummaryRecord = record; // Cache for re-render
     const s = document.getElementById("summary");
     if (!s) return;
     s.style.display = "block";
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
 
     if (!record || !record.date) {
-        s.innerHTML = `<h2>Session Delta Summary</h2><p>No record selected.</p>`;
+        const sessionDeltaSummary = t ? t("session_delta_summary") : "Session Delta Summary";
+        const noRecordSelected = t ? t("no_record_selected") : "No record selected.";
+        s.innerHTML = `<h2 data-i18n="session_delta_summary">${sessionDeltaSummary}</h2><p data-i18n="no_record_selected">${noRecordSelected}</p>`;
         return;
     }
 
-    const previousDelta = dailyRecords.length > 1 ? dailyRecords[dailyRecords.length - 2].delta : 0;
+    const previousDelta = Store.getRecords().length > 1 ? Store.getRecords()[Store.getRecords().length - 2].delta : 0;
     
     let deltaColor = DTR_COLORS.neutral;
     if (record.delta <= 0) deltaColor = DTR_COLORS.warning;
     else if (record.delta > GREAT_DELTA_THRESHOLD) deltaColor = DTR_COLORS.good;
 
-    let trendLabel = "No previous record", trendColor = DTR_COLORS.neutral;
-    if (dailyRecords.length > 1) {
-        if (record.delta > previousDelta) { trendLabel = "Improved"; trendColor = DTR_COLORS.good; }
-        else if (record.delta < previousDelta) { trendLabel = "Declined"; trendColor = DTR_COLORS.warning; }
-        else { trendLabel = "Same as before"; trendColor = DTR_COLORS.neutral; }
+    let trendKey = "trend_no_previous_record";
+    let trendColor = DTR_COLORS.neutral;
+    if (Store.getRecords().length > 1) {
+        if (record.delta > previousDelta) { trendKey = "trend_improved"; trendColor = DTR_COLORS.good; }
+        else if (record.delta < previousDelta) { trendKey = "trend_declined"; trendColor = DTR_COLORS.warning; }
+        else { trendKey = "trend_same_as_before"; trendColor = DTR_COLORS.neutral; }
     }
+    const trendLabel = t ? t(trendKey) : trendKey;
 
     const hasSummaryImages = (record.imageIds && record.imageIds.length) || (record.images && record.images.length);
     const summaryImagesContainer = hasSummaryImages
@@ -92,63 +103,67 @@ function showSummary(record) {
     else weekColor = DTR_COLORS.excellent;
 
     const identityLabels = {
-        0: "Not Set",
-        1: "1 - Misaligned",
-        2: "2 - Improving",
-        3: "3 - On Track",
-        4: "4 - High Growth",
-        5: "5 - Fully Aligned"
+        0: t ? t("identity_0") : "Not Set",
+        1: t ? t("identity_1") : "1 - Drifting",
+        2: t ? t("identity_2") : "2 - Re-centering",
+        3: t ? t("identity_3") : "3 - Aligned",
+        4: t ? t("identity_4") : "4 - Compounding",
+        5: t ? t("identity_5") : "5 - Mission Locked"
     };
-    const commuteEff = record.commuteTotal > 0 ? ((record.commuteProductive / record.commuteTotal) * 100).toFixed(1) + "%" : "N/A";
+    const commuteEff = record.commuteTotal > 0
+        ? ((record.commuteProductive / record.commuteTotal) * 100).toFixed(1) + "%"
+        : (typeof window !== "undefined" && window.DTRI18N ? window.DTRI18N.t("na_short") : "N/A");
 
     // OJT Forecast logic Alignment (SINGLE SOURCE OF TRUTH)
-    const f = calculateForecastUnified({ logs: dailyRecords });
+    const f = calculateForecastUnified({ logs: Store.getRecords() });
     const absDelta = Math.abs(f.currentStatusDelta).toFixed(1);
-    const statusText = f.currentStatusDelta > 0
-        ? "Ahead (+" + absDelta + "h)"
-        : (f.currentStatusDelta < 0
-            ? "Behind (" + absDelta + "h)"
-            : "On Track");
+    const statusKey = f.currentStatusDelta > 0 ? "status_ahead_hours" : (f.currentStatusDelta < 0 ? "status_behind_hours" : "status_on_track");
+    const statusArgs = f.currentStatusDelta !== 0 ? JSON.stringify({ hours: absDelta }) : "{}";
+    const statusText = t ? t(statusKey, JSON.parse(statusArgs)) : statusKey;
 
     s.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap: 20px;">
             <div style="flex: 1;">
-                <h2>Session Delta Summary</h2>
+                <h2 data-i18n="session_delta_summary">Session Delta Summary</h2>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <p style="margin:0;"><strong>Date:</strong> ${record.date}</p>
-                    <span style="font-size:0.8em; color:${f.isAhead ? DTR_COLORS.good : DTR_COLORS.warning}; font-family:var(--font-body); text-transform:uppercase; font-weight:bold;">${statusText}</span>
+                    <p style="margin:0;"><strong><span data-i18n="summary_date">Date</span>:</strong> ${record.date}</p>
+                    <span style="font-size:0.8em; color:${f.isAhead ? DTR_COLORS.good : DTR_COLORS.warning}; font-family:var(--font-body); text-transform:uppercase; font-weight:bold;" data-i18n="${statusKey}" data-i18n-args='${statusArgs}'>${statusText}</span>
                 </div>
-                <p><strong>Timeline:</strong> ${timelineWeekDayLabel}</p>
-                <p><strong>Hours Worked:</strong> ${record.hours}</p>
-                <p><strong>Delta:</strong> <span style="color:${deltaColor}; font-weight:bold;">${record.delta >= 0 ? "+" : ""}${record.delta.toFixed(2)} hours</span></p>
-                <p><strong>Trend:</strong> <span style="color:${trendColor}; font-weight:bold;">${trendLabel}</span></p>
-                <p><strong>Overall:</strong> <span style="color:${overallColor}; font-weight:bold;">${totalHours} / ${targetHours}h</span></p>
-                <p><strong>Weekly:</strong> <span style="color:${weekColor}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span></p>
+                <p><strong><span data-i18n="summary_timeline">Timeline</span>:</strong> ${timelineWeekDayLabel}</p>
+                <p><strong><span data-i18n="summary_hours_worked">Hours Worked</span>:</strong> ${record.hours}</p>
+                <p><strong><span data-i18n="summary_delta">Delta</span>:</strong> <span style="color:${deltaColor}; font-weight:bold;">${record.delta >= 0 ? "+" : ""}${record.delta.toFixed(2)} <span data-i18n="hours_unit">hours</span></span></p>
+                <p><strong><span data-i18n="summary_trend">Trend</span>:</strong> <span style="color:${trendColor}; font-weight:bold;" data-i18n="${trendKey}">${trendLabel}</span></p>
+                <p><strong><span data-i18n="summary_overall">Overall</span>:</strong> <span style="color:${overallColor}; font-weight:bold;">${totalHours} / ${targetHours}h</span></p>
+                <p><strong><span data-i18n="summary_weekly">Weekly</span>:</strong> <span style="color:${weekColor}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span></p>
             </div>
             <div style="max-width:300px;">
                 ${summaryImagesContainer}
             </div>
         </div>
-        <p><strong>Reflection:</strong> ${record.reflection}</p>
-        <p><strong>Tools:</strong> ${Array.isArray(record.tools) ? record.tools.join(", ") : record.tools}</p>
+        <p><strong><span data-i18n="daily_reflection">Daily Reflection</span>:</strong> ${record.reflection}</p>
+        <p><strong><span data-i18n="tools_used">Tools Used (comma separated)</span>:</strong> ${Array.isArray(record.tools) ? record.tools.join(", ") : record.tools}</p>
         <div style="margin-top:20px; padding-top:15px; border-top: 1px dotted var(--border); display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:0.9em;">
-            <div><strong>Personal:</strong> ${record.personalHours || 0}h</div>
-            <div><strong>Sleep:</strong> ${record.sleepHours || 0}h</div>
-            <div><strong>Recovery:</strong> ${record.recoveryHours || 0}h</div>
-            <div><strong>Identity:</strong> ${identityLabels[record.identityScore] || "Not Set"}</div>
-            <div style="grid-column: span 2;"><strong>Commute Eff:</strong> ${commuteEff}</div>
+            <div><strong><span data-i18n="summary_personal">Personal</span>:</strong> ${record.personalHours || 0}h</div>
+            <div><strong><span data-i18n="summary_sleep">Sleep</span>:</strong> ${record.sleepHours || 0}h</div>
+            <div><strong><span data-i18n="summary_recovery">Recovery</span>:</strong> ${record.recoveryHours || 0}h</div>
+            <div><strong><span data-i18n="summary_identity">Identity</span>:</strong> <span data-i18n="identity_${record.identityScore || 0}">${identityLabels[record.identityScore] || (t ? t("identity_0") : "Not Set")}</span></div>
+            <div style="grid-column: span 2;"><strong><span data-i18n="summary_commute_eff">Commute Eff</span>:</strong> ${commuteEff}</div>
         </div>
         
         <div style="margin-top:15px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:4px solid ${f.isAhead ? DTR_COLORS.good : DTR_COLORS.warning};">
-            <h4 style="margin:0 0 8px 0; font-size:0.9em; text-transform:uppercase; color:var(--accent); font-family:var(--font-body);">OJT Forecast</h4>
+            <h4 style="margin:0 0 8px 0; font-size:0.9em; text-transform:uppercase; color:var(--accent); font-family:var(--font-body);" data-i18n="summary_ojt_forecast">OJT Forecast</h4>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:0.85em; font-family:var(--font-body);">
-                <div>Total Rendered: <strong>${Math.round(f.totalActualHours)}h</strong></div>
-                <div>Rem. Hours: <strong>${Math.round(f.remainingHours)}h</strong></div>
-                <div>Need Pace: <strong>${Math.ceil(f.requiredRate)}h/day</strong></div>
-                <div>Projected: <strong>${formatGmt8DateLabel(f.projectedDate, {month:'short', day:'numeric'})}</strong></div>
+                <div><span data-i18n="summary_total_rendered">Total Rendered</span>: <strong>${Math.round(f.totalActualHours)}h</strong></div>
+                <div><span data-i18n="summary_remaining_hours">Rem. Hours</span>: <strong>${Math.round(f.remainingHours)}h</strong></div>
+                <div><span data-i18n="summary_need_pace">Need Pace</span>: <strong>${Math.ceil(f.requiredRate)}h/day</strong></div>
+                <div><span data-i18n="summary_projected">Projected</span>: <strong>${formatGmt8DateLabel(f.projectedDate, {month:'short', day:'numeric'})}</strong></div>
             </div>
         </div>
     `;
+
+    if (window.DTRI18N && typeof window.DTRI18N.applyTranslations === "function") {
+        window.DTRI18N.applyTranslations();
+    }
     if (hasSummaryImages && typeof getRecordImageUrls === "function") {
         const container = s.querySelector(".summary-images");
         if (container) {
@@ -159,6 +174,7 @@ function showSummary(record) {
                     const img = document.createElement("img");
                     img.src = src;
                     img.setAttribute("style", "width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border); transition: transform 0.2s;");
+                    img.alt = sessionLabel;
                     img.alt = sessionLabel;
                     img.onerror = function () { this.style.visibility = "hidden"; };
                     img.onmouseover = function () { this.style.transform = "scale(2.5)"; this.style.zIndex = "100"; };
@@ -174,21 +190,22 @@ function loadReflectionViewer() {
     const viewer = document.getElementById("reflectionViewer");
     if (!viewer) return;
     viewer.innerHTML = "";
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
 
-    if (dailyRecords.length === 0) {
-        const emptyText = "No reflections saved yet.";
-        viewer.innerHTML = `<p class="empty">${emptyText}</p>`;
+    if (Store.getRecords().length === 0) {
+        const emptyText = t ? t("no_reflections_saved") : "No reflections saved yet.";
+        viewer.innerHTML = `<p class="empty" data-i18n="no_reflections_saved">${emptyText}</p>`;
         return;
     }
 
     const dedupedMap = new Map();
-    dailyRecords.forEach((r, idx) => {
+    Store.getRecords().forEach((r, idx) => {
         const dateKey = toGmt8DateKey(r && r.date) || (r && r.date);
         if (!dateKey) return;
         dedupedMap.set(dateKey, { r: { ...r, date: dateKey }, originalIndex: idx });
     });
     const dedupedEntries = Array.from(dedupedMap.values()).sort((a, b) => a.r.date.localeCompare(b.r.date));
-    const duplicateCount = Math.max(0, dailyRecords.length - dedupedEntries.length);
+    const duplicateCount = Math.max(0, Store.getRecords().length - dedupedEntries.length);
 
     updateReflectionWeekOptions();
     const weekFilter = currentReflectionViewMode === "week" ? getReflectionSelectedWeek() : null;
@@ -198,8 +215,8 @@ function loadReflectionViewer() {
     const sourceRecords = sourceEntries.map(entry => entry.r);
 
     if (!sourceRecords.length) {
-        const emptyText = "No reflections for the selected week.";
-        viewer.innerHTML = `<p class="empty">${emptyText}</p>`;
+        const emptyText = t ? t("no_reflections_for_week") : "No reflections for the selected week.";
+        viewer.innerHTML = `<p class="empty" data-i18n="no_reflections_for_week">${emptyText}</p>`;
         return;
     }
 
@@ -213,9 +230,9 @@ function loadReflectionViewer() {
     }
 
     const maxWeeklyHours = DAILY_TARGET_HOURS * 7;
-    const fallbackWeek = dailyRecords.length > 0 ? getWeekNumber(dailyRecords[dailyRecords.length - 1].date) : 1;
-    const weekHoursLabel = "Week " + (weekFilter || fallbackWeek) + " Hours";
+    const fallbackWeek = Store.getRecords().length > 0 ? getWeekNumber(Store.getRecords()[Store.getRecords().length - 1].date) : 1;
     if (weekFilter) {
+        const weekHoursLabel = t ? t("week_hours_label", { week: weekFilter }) : ("Week " + weekFilter + " Hours");
         const weekHours = getWeekHours(weekFilter);
         let weekColor = DTR_COLORS.neutral;
         if (weekHours < maxWeeklyHours * 0.5) weekColor = DTR_COLORS.warning;
@@ -223,32 +240,35 @@ function loadReflectionViewer() {
         const range = getWeekDateRange(weekFilter);
         const counterDiv = document.createElement("div");
         counterDiv.style.marginBottom = "10px";
-        counterDiv.innerHTML = `<strong>${weekHoursLabel}:</strong> <span style="color:${weekColor}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span> <span style="opacity:0.7; font-size:0.9em;">(${range.start} - ${range.end})</span>`;
+        counterDiv.innerHTML = `<strong><span data-i18n="week_hours_label" data-i18n-args='{"week":${weekFilter}}'>${weekHoursLabel}</span>:</strong> <span style="color:${weekColor}; font-weight:bold;">${weekHours} / ${maxWeeklyHours}</span> <span style="opacity:0.7; font-size:0.9em;">(${range.start} - ${range.end})</span>`;
         viewer.appendChild(counterDiv);
     } else {
-        const latestDate = dailyRecords[dailyRecords.length - 1].date;
+        const latestDate = Store.getRecords()[Store.getRecords().length - 1].date;
         const currentWeek = getWeekNumber(latestDate);
+        const weekHoursLabel = t ? t("week_hours_label", { week: currentWeek }) : ("Week " + currentWeek + " Hours");
         const currentWeekHours = getWeekHours(currentWeek);
         let weekColor = DTR_COLORS.neutral;
         if (currentWeekHours < maxWeeklyHours * 0.5) weekColor = DTR_COLORS.warning;
         else if (currentWeekHours < maxWeeklyHours) weekColor = DTR_COLORS.good;
         const counterDiv = document.createElement("div");
         counterDiv.style.marginBottom = "10px";
-        counterDiv.innerHTML = `<strong>${weekHoursLabel}:</strong> <span style="color:${weekColor}; font-weight:bold;">${currentWeekHours} / ${maxWeeklyHours}</span>`;
+        counterDiv.innerHTML = `<strong><span data-i18n="week_hours_label" data-i18n-args='{"week":${currentWeek}}'>${weekHoursLabel}</span>:</strong> <span style="color:${weekColor}; font-weight:bold;">${currentWeekHours} / ${maxWeeklyHours}</span>`;
         viewer.appendChild(counterDiv);
     }
 
     let displayItems = sourceEntries.map((entry) => {
         const r = entry.r;
         const originalIndex = entry.originalIndex;
-        let trendLabel = "No previous record", trendColor = DTR_COLORS.neutral;
+        let trendKey = "trend_no_previous_record";
+        let trendColor = DTR_COLORS.neutral;
         if (originalIndex > 0) {
-            const prevDelta = dailyRecords[originalIndex - 1].delta;
-            if (r.delta > prevDelta) { trendLabel = "Improved"; trendColor = DTR_COLORS.good; }
-            else if (r.delta < prevDelta) { trendLabel = "Declined"; trendColor = DTR_COLORS.warning; }
-            else { trendLabel = "Same as before"; trendColor = DTR_COLORS.neutral; }
+            const prevDelta = Store.getRecords()[originalIndex - 1].delta;
+            if (r.delta > prevDelta) { trendKey = "trend_improved"; trendColor = DTR_COLORS.good; }
+            else if (r.delta < prevDelta) { trendKey = "trend_declined"; trendColor = DTR_COLORS.warning; }
+            else { trendKey = "trend_same_as_before"; trendColor = DTR_COLORS.neutral; }
         }
-        return { r, originalIndex, trendLabel, trendColor };
+        const trendLabel = t ? t(trendKey) : trendKey;
+        return { r, originalIndex, trendKey, trendLabel, trendColor };
     });
 
     if (currentSortMode === "date-desc") displayItems.sort((a,b) => (toGmt8DateKey(b.r.date) || "").localeCompare(toGmt8DateKey(a.r.date) || ""));
@@ -272,19 +292,21 @@ function loadReflectionViewer() {
         const div = document.createElement("div");
         div.className = "reflection-item";
 
-        const identityLabels = { 
-            0: "Not Set", 
-            1: "1 - Drifting", 
-            2: "2 - Re-centering", 
-            3: "3 - Aligned", 
-            4: "4 - Compounding", 
-            5: "5 - Mission Locked"
+        const identityLabels = {
+            0: t ? t("identity_0") : "Not Set",
+            1: t ? t("identity_1") : "1 - Drifting",
+            2: t ? t("identity_2") : "2 - Re-centering",
+            3: t ? t("identity_3") : "3 - Aligned",
+            4: t ? t("identity_4") : "4 - Compounding",
+            5: t ? t("identity_5") : "5 - Mission Locked"
         };
-        const commuteEff = r.commuteTotal > 0 ? ((r.commuteProductive / r.commuteTotal) * 100).toFixed(1) + "%" : "N/A";
+        const commuteEff = r.commuteTotal > 0
+            ? ((r.commuteProductive / r.commuteTotal) * 100).toFixed(1) + "%"
+            : (typeof window !== "undefined" && window.DTRI18N ? window.DTRI18N.t("na_short") : "N/A");
 
         const toolsHTML = (Array.isArray(r.tools) && r.tools.length)
             ? r.tools.map(t => `<span style="display:inline-block; padding:2px 8px; margin:2px 3px 2px 0; border:1px solid var(--accent); border-radius:12px; font-size:0.78em; color:var(--accent); white-space:nowrap;">${t}</span>`).join("")
-            : `<span style="opacity:0.5;">N/A</span>`;
+            : `<span style="opacity:0.5;">${typeof window !== "undefined" && window.DTRI18N ? window.DTRI18N.t("na_short") : "N/A"}</span>`;
 
         div.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -294,14 +316,14 @@ function loadReflectionViewer() {
             <p>${r.reflection}</p>
             <div style="margin: 8px 0; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px; border-left: 3px solid var(--accent); font-size: 0.85em;">
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
-                    <div><strong>Hours Worked:</strong> ${r.hours}h (Δ ${r.delta.toFixed(2)})</div>
-                    <div><strong>Trend:</strong> <span style="color:${item.trendColor}">${item.trendLabel}</span></div>
-                    <div><strong>Personal:</strong> ${r.personalHours || 0}h</div>
-                    <div><strong>Sleep:</strong> ${r.sleepHours || 0}h</div>
-                    <div><strong>Recovery:</strong> ${r.recoveryHours || 0}h</div>
-                    <div><strong>Identity:</strong> ${identityLabels[r.identityScore] || "Not Set"}</div>
-                    <div style="grid-column: span 2;"><strong>Commute Eff:</strong> ${commuteEff}</div>
-                    <div style="grid-column: span 2; margin-top: 4px;"><strong>Tools Used:</strong><br>${toolsHTML}</div>
+                    <div><strong><span data-i18n="summary_hours_worked">Hours Worked</span>:</strong> ${r.hours}h (Δ ${r.delta.toFixed(2)})</div>
+                    <div><strong><span data-i18n="summary_trend">Trend</span>:</strong> <span style="color:${item.trendColor}" data-i18n="${item.trendKey}">${item.trendLabel}</span></div>
+                    <div><strong><span data-i18n="summary_personal">Personal</span>:</strong> ${r.personalHours || 0}h</div>
+                    <div><strong><span data-i18n="summary_sleep">Sleep</span>:</strong> ${r.sleepHours || 0}h</div>
+                    <div><strong><span data-i18n="summary_recovery">Recovery</span>:</strong> ${r.recoveryHours || 0}h</div>
+                    <div><strong><span data-i18n="summary_identity">Identity</span>:</strong> <span data-i18n="identity_${r.identityScore || 0}">${identityLabels[r.identityScore] || (t ? t("identity_0") : "Not Set")}</span></div>
+                    <div style="grid-column: span 2;"><strong><span data-i18n="summary_commute_eff">Commute Eff</span>:</strong> ${commuteEff}</div>
+                    <div style="grid-column: span 2; margin-top: 4px;"><strong><span data-i18n="summary_tools_used">Tools Used</span>:</strong><br>${toolsHTML}</div>
                 </div>
             </div>
             ${reflectionImagesHTML}
@@ -335,6 +357,10 @@ function loadReflectionViewer() {
         }
         viewer.appendChild(div);
     });
+
+    if (window.DTRI18N && typeof window.DTRI18N.applyTranslations === "function") {
+        window.DTRI18N.applyTranslations();
+    }
 }
 
 function closeEditModal() {
@@ -379,7 +405,7 @@ function saveEditModal() {
                 const failedCount = results.filter((r) => r.status === "rejected").length;
 
                 if (!newImageIds.length) {
-                    const old = dailyRecords[editingIndex];
+                    const old = Store.getRecords()[editingIndex];
                     if (failedCount > 0) {
                         alert("Image upload failed for " + failedCount + " image(s). Keeping old images.");
                     }
@@ -392,7 +418,7 @@ function saveEditModal() {
                 }
 
                 // Delete old images and save new ones
-                const old = dailyRecords[editingIndex];
+                const old = Store.getRecords()[editingIndex];
                 const oldIds = old.imageIds || [];
                 if (oldIds.length && typeof deleteImagesFromStore === "function") {
                     deleteImagesFromStore(oldIds).catch(() => {});
@@ -405,7 +431,7 @@ function saveEditModal() {
                 alert("Failed to save images to storage: " + (err && err.message ? err.message : err));
             });
     } else {
-        const old = dailyRecords[editingIndex];
+        const old = Store.getRecords()[editingIndex];
         finalizeSave(date, hours, reflection, accomplishments, tools, old.imageIds || [], l2Data);
     }
 }
@@ -419,34 +445,34 @@ async function finalizeSave(date, hours, reflection, accomplishments, tools, ima
     }
 
     const normalizedDate = dateKey || date;
-    const duplicateIndex = dailyRecords.findIndex((r, idx) =>
+    const duplicateIndex = Store.getRecords().findIndex((r, idx) =>
         idx !== editingIndex && (toGmt8DateKey(r.date) || r.date) === normalizedDate
     );
     if (duplicateIndex !== -1) {
         if (!confirm("A DTR record for " + normalizedDate + " already exists. Overwrite it with this edit?")) {
             return;
         }
-        dailyRecords.splice(duplicateIndex, 1);
+        Store.removeRecordAt(duplicateIndex);
         if (duplicateIndex < editingIndex) editingIndex -= 1;
     }
 
-    dailyRecords[editingIndex] = new DailyRecord(normalizedDate, hours, reflection, accomplishments, tools, [], l2Data, imageIds || []);
-    dailyRecords.sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
+    Store.updateRecord(editingIndex, new DailyRecord(normalizedDate, hours, reflection, accomplishments, tools, [], l2Data, imageIds || []));
+    Store.getRecords().sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
     if (typeof persistDTR === "function") {
-        const ok = await persistDTR(dailyRecords);
+        const ok = await persistDTR(Store.getRecords());
         if (!ok) {
             alert("Failed to save record update.");
             return;
         }
     } else {
-        localStorage.setItem("dtr", JSON.stringify(dailyRecords));
+        localStorage.setItem("dtr", JSON.stringify(Store.getRecords()));
     }
 
     closeEditModal();
     updateReflectionWeekOptions();
     loadReflectionViewer();
-    const newIndex = dailyRecords.findIndex(r => r.date === date);
-    showSummary(dailyRecords[newIndex]);
+    const newIndex = Store.getRecords().findIndex(r => r.date === date);
+    showSummary(Store.getRecords()[newIndex]);
     if (typeof renderDailyGraph === "function") renderDailyGraph();
     if (typeof renderWeeklyGraph === "function") renderWeeklyGraph();
     if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
@@ -456,7 +482,7 @@ async function finalizeSave(date, hours, reflection, accomplishments, tools, ima
 document.addEventListener("click", e => {
     if (!e.target.classList.contains("edit-btn")) return;
     editingIndex = Number(e.target.dataset.index);
-    const r = dailyRecords[editingIndex];
+    const r = Store.getRecords()[editingIndex];
     if (typeof applyDtrDateIntegrityGuardToInputs === "function") {
         applyDtrDateIntegrityGuardToInputs();
     }
@@ -529,3 +555,12 @@ if (editImgInput) {
         });
     });
 }
+
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.clearDTRForm = window.clearDTRForm || clearDTRForm; }
+if(typeof window !== "undefined") { window.updateWeeklyCounter = window.updateWeeklyCounter || updateWeeklyCounter; }
+if(typeof window !== "undefined") { window.showSummary = window.showSummary || showSummary; }
+if(typeof window !== "undefined") { window.loadReflectionViewer = window.loadReflectionViewer || loadReflectionViewer; }
+if(typeof window !== "undefined") { window.closeEditModal = window.closeEditModal || closeEditModal; }
+if(typeof window !== "undefined") { window.saveEditModal = window.saveEditModal || saveEditModal; }
+if(typeof window !== "undefined") { window.finalizeSave = window.finalizeSave || finalizeSave; }

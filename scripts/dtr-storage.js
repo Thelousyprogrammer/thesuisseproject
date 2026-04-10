@@ -27,22 +27,22 @@ function safeSetDTR(data) {
 }
 
 async function deleteLastRecord() {
-    if (!dailyRecords.length) return alert("No records to delete.");
+    if (!Store.getRecords().length) return alert("No records to delete.");
     if (!confirm("Delete the most recent DTR entry?")) return;
 
-    const last = dailyRecords[dailyRecords.length - 1];
+    const last = Store.getRecords()[Store.getRecords().length - 1];
     const idsToDelete = (last.imageIds || []).length ? last.imageIds : [];
-    dailyRecords.pop();
-    if (!await persistDTR(dailyRecords)) return;
+    Store.popRecord();
+    if (!await persistDTR(Store.getRecords())) return;
     if (idsToDelete.length && typeof deleteImagesFromStore === "function") {
         deleteImagesFromStore(idsToDelete).catch(() => {});
     }
 
     if (typeof updateStorageVisualizer === "function") updateStorageVisualizer();
     loadReflectionViewer();
-    if (dailyRecords.length) {
-        showSummary(dailyRecords[dailyRecords.length - 1]);
-        updateWeeklyCounter(dailyRecords[dailyRecords.length - 1].date);
+    if (Store.getRecords().length) {
+        showSummary(Store.getRecords()[Store.getRecords().length - 1]);
+        updateWeeklyCounter(Store.getRecords()[Store.getRecords().length - 1].date);
     }
     renderDailyGraph();
     renderWeeklyGraph();
@@ -52,8 +52,8 @@ async function deleteLastRecord() {
 async function clearAllRecords() {
     if (!confirm("This will delete ALL DTR records. Continue?")) return;
 
-    const allImageIds = (dailyRecords || []).flatMap((r) => r.imageIds || []);
-    dailyRecords = [];
+    const allImageIds = (Store.getRecords() || []).flatMap((r) => r.imageIds || []);
+    Store.clear();
     if (typeof clearRecordsFromStore === "function") {
         try { await clearRecordsFromStore(); } catch (_) {}
     }
@@ -71,6 +71,32 @@ async function clearAllRecords() {
     alert("All DTR records cleared.");
 }
 
+async function hardClearAllData() {
+    const confirmMsg = window.DTRI18N ? window.DTRI18N.t("confirm_clear_all_data") : "This will delete ALL DTR records, images, settings, and themes. This action is irreversible. Continue?";
+    if (!confirm(confirmMsg)) return;
+
+    localStorage.clear();
+
+    const dbName = "DTRImageStore";
+    const deleteRequest = indexedDB.deleteDatabase(dbName);
+
+    deleteRequest.onsuccess = () => {
+        const successMsg = window.DTRI18N ? window.DTRI18N.t("cleared_all_data_success") : "All data has been wiped. The page will now reload.";
+        alert(successMsg);
+        window.location.href = "index.html"; 
+    };
+
+    deleteRequest.onerror = () => {
+        console.error("Error deleting IndexedDB:", deleteRequest.error);
+        alert("Failed to delete image database fully. Please clear site data manually in browser settings.");
+        window.location.href = "index.html";
+    };
+
+    deleteRequest.onblocked = () => {
+        alert("Database deletion blocked. Please close other open DTR tabs and try again.");
+    };
+}
+
 function checkDataHealth(record) {
     const warnings = [];
     if (record.sleepHours === 0) warnings.push("Sleep Duration is 0");
@@ -86,55 +112,50 @@ function checkDataHealth(record) {
 }
 
 async function persistDTR(data) {
-    let primaryOk = true;
     if (typeof saveRecordsToStore === "function") {
         try {
             await saveRecordsToStore(data);
-        } catch (e) {
-            primaryOk = false;
-            console.error("Primary record store write failed. Falling back to localStorage.", e);
-        }
-    }
-
-    try {
-        localStorage.setItem("dtr", JSON.stringify(data));
-        return true;
-    } catch (e) {
-        if (primaryOk) {
-            console.warn("Secondary localStorage backup write failed while primary IndexedDB save succeeded.", e);
             return true;
-        }
-        if (isQuotaError(e)) {
-            alert("Storage full and primary storage is unavailable. Please free space and try again.");
-        } else {
+        } catch (e) {
+            console.error("Primary record store write failed.", e);
             alert("Failed to save records: " + (e.message || e));
+            return false;
         }
-        return false;
     }
+    alert("IndexedDB is required but saveRecordsToStore is missing.");
+    return false;
 }
 
 async function loadDTRRecords() {
+    let records = [];
     if (typeof getRecordsFromStore === "function") {
         try {
             const stored = await getRecordsFromStore();
-            if (Array.isArray(stored)) return stored;
+            if (Array.isArray(stored)) records = stored;
         } catch (e) {
-            console.error("Primary record store read failed. Falling back to localStorage.", e);
+            console.error("Primary record store read failed.", e);
         }
     }
 
-    let fallback = [];
+    // One-time silent migration from localStorage to prevent 5MB quota bloat
     try {
-        fallback = JSON.parse(localStorage.getItem("dtr") || "[]");
-    } catch (_) {
-        fallback = [];
-    }
-    if (Array.isArray(fallback) && fallback.length && typeof saveRecordsToStore === "function") {
-        try {
-            await saveRecordsToStore(fallback);
-        } catch (_) {}
-    }
-    return Array.isArray(fallback) ? fallback : [];
+        const fallbackRaw = localStorage.getItem("dtr");
+        if (fallbackRaw) {
+            const fallback = JSON.parse(fallbackRaw);
+            if (Array.isArray(fallback) && fallback.length > 0) {
+                if (records.length === 0) {
+                    records = fallback;
+                    if (typeof saveRecordsToStore === "function") {
+                        await saveRecordsToStore(fallback);
+                    }
+                }
+            }
+            // Clear localStorage forever since IndexedDB is now the master source
+            localStorage.removeItem("dtr");
+        }
+    } catch (_) {}
+
+    return Array.isArray(records) ? records : [];
 }
 
 // --- GLOBALS ---
@@ -228,111 +249,88 @@ function submitDTR() {
     }
 }
 
+const compressWorkerCode = `
+self.onmessage = async function(e) {
+    try {
+        const { id, buffer, type, quality, maxWidth } = e.data;
+        const blob = new Blob([buffer], { type });
+        const bitmap = await createImageBitmap(blob);
+        
+        let width = bitmap.width;
+        let height = bitmap.height;
+        if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+        }
+        
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#FFF";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(bitmap, 0, 0, width, height);
+        
+        const compressedBlob = await canvas.convertToBlob({ type: "image/jpeg", quality });
+        const outBuffer = await compressedBlob.arrayBuffer();
+        
+        self.postMessage({ id, success: true, buffer: outBuffer, type: "image/jpeg" }, [outBuffer]);
+    } catch (err) {
+        self.postMessage({ id: e.data.id, success: false, error: err.message });
+    }
+};
+`;
+
+const compressWorkerBlob = new Blob([compressWorkerCode], { type: "application/javascript" });
+const compressWorkerUrl = URL.createObjectURL(compressWorkerBlob);
+const compressWorker = new Worker(compressWorkerUrl);
+let compressMessageId = 0;
+const compressResolvers = new Map();
+
+compressWorker.onmessage = (e) => {
+    const { id, success, buffer, type, error } = e.data;
+    const resolver = compressResolvers.get(id);
+    if (resolver) {
+        if (success) {
+            const blob = new Blob([buffer], { type });
+            const reader = new FileReader(); // main thread
+            reader.onload = () => resolver.resolve(reader.result);
+            reader.onerror = () => resolver.reject(new Error("Worker FileReader failed"));
+            reader.readAsDataURL(blob);
+        } else {
+            resolver.reject(new Error(error));
+        }
+        compressResolvers.delete(id);
+    }
+};
+
 /**
- * Compress image to max dimension and JPEG quality.
+ * Offloaded background Web Worker image compression
  * Always returns a BASE64 data URL.
  */
 function compressImage(input, quality = 0.6, maxWidth = 1280) {
-    return new Promise((resolve, reject) => {
-        if (!input) {
-            reject(new Error("No image input provided"));
-            return;
-        }
-
-        const img = new Image();
-
-        // Required for blob/object URLs
-        img.crossOrigin = "anonymous";
-
-        img.onload = () => {
-            try {
-                const canvas = document.createElement("canvas");
-                let { width, height } = img;
-                const inputType = input && input.type ? input.type : typeof input;
-
-                // Resize if too large
-                if (width > maxWidth) {
-                    height = Math.round((height * maxWidth) / width);
-                    width = maxWidth;
-                }
-
-                if (!width || !height) {
-                    reject(new Error(`Invalid image dimensions (${width}x${height}) for input type ${inputType}`));
-                    return;
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-
-                const ctx = canvas.getContext("2d");
-                if (!ctx) {
-                    reject(new Error("Canvas 2D context unavailable"));
-                    return;
-                }
-
-                // Fill white background (for PNG transparency)
-                ctx.fillStyle = "#FFF";
-                ctx.fillRect(0, 0, width, height);
-
-                // Safe drawImage
-                try {
-                    ctx.drawImage(img, 0, 0, width, height);
-                } catch (e) {
-                    console.warn("drawImage failed - returning original image", e);
-
-                    if (typeof input === "string" && input.startsWith("data:image/")) {
-                        resolve(input); // fallback to original base64
-                        return;
-                    }
-
-                    reject(new Error("drawImage failed"));
-                    return;
-                }
-
-                const compressed = canvas.toDataURL("image/jpeg", quality);
-
-                // Validate output BEFORE logging
-                if (!compressed || !compressed.startsWith("data:image/")) {
-                    reject(new Error("Compression produced invalid data URL"));
-                    return;
-                }
-
-                resolve(compressed);
-
-            } catch (err) {
-                reject(err);
+    return new Promise(async (resolve, reject) => {
+        try {
+            if (!input) return reject(new Error("No image input provided"));
+            
+            let blob;
+            if (input instanceof Blob) {
+                blob = input;
+            } else if (typeof input === "string") {
+                const response = await fetch(input);
+                blob = await response.blob();
+            } else {
+                return reject(new Error("Unsupported image input"));
             }
-        };
-
-        img.onerror = () => {
-            const inputType = input && input.type ? input.type : typeof input;
-            reject(new Error(`Image failed to load (input type: ${inputType})`));
-        };
-
-        // Handle input types safely
-        if (input instanceof Blob) {
-            const objectUrl = URL.createObjectURL(input);
-            const originalOnload = img.onload;
-            const originalOnerror = img.onerror;
-            img.onload = () => {
-                try {
-                    originalOnload();
-                } finally {
-                    URL.revokeObjectURL(objectUrl);
-                }
-            };
-            img.onerror = () => {
-                try {
-                    originalOnerror();
-                } finally {
-                    URL.revokeObjectURL(objectUrl);
-                }
-            };
-            img.src = objectUrl;
-        } else if (typeof input === "string") {
-            img.src = input;
-        } else {
-            reject(new Error("Unsupported image input"));
+            
+            const buffer = await blob.arrayBuffer();
+            const id = ++compressMessageId;
+            compressResolvers.set(id, { resolve, reject });
+            
+            compressWorker.postMessage(
+                { id, buffer, type: blob.type, quality, maxWidth },
+                [buffer]
+            );
+        } catch (e) {
+            reject(e);
         }
     });
 }
@@ -347,19 +345,19 @@ async function saveRecord(date, hours, reflection, accomplishments, tools, image
 
     const normalizedDate = dateKey || date;
     const record = new DailyRecord(normalizedDate, hours, reflection, accomplishments, tools, [], l2Data, imageIds || []);
-    const previous = [...dailyRecords];
-    const duplicateIndex = dailyRecords.findIndex((r) => (toGmt8DateKey(r.date) || r.date) === normalizedDate);
+    const previous = [...Store.getRecords()];
+    const duplicateIndex = Store.getRecords().findIndex((r) => (toGmt8DateKey(r.date) || r.date) === normalizedDate);
 
     if (duplicateIndex !== -1) {
         const resolution = await resolveDateConflictModal({
             incomingDate: normalizedDate,
-            existingDate: toGmt8DateKey(dailyRecords[duplicateIndex].date) || dailyRecords[duplicateIndex].date
+            existingDate: toGmt8DateKey(Store.getRecords()[duplicateIndex].date) || Store.getRecords()[duplicateIndex].date
         });
         if (!resolution) return;
 
         if (resolution.action === "replace") {
-            dailyRecords.splice(duplicateIndex, 1);
-            dailyRecords.push(record);
+            Store.removeRecordAt(duplicateIndex);
+            Store.addRecord(record);
         } else {
             const nextIncomingDate = resolution.newDate;
             const nextExistingDate = resolution.existingDate;
@@ -375,10 +373,10 @@ async function saveRecord(date, hours, reflection, accomplishments, tools, image
                 return;
             }
 
-            const incomingClash = dailyRecords.findIndex((r, idx) =>
+            const incomingClash = Store.getRecords().findIndex((r, idx) =>
                 idx !== duplicateIndex && (toGmt8DateKey(r.date) || r.date) === nextIncomingDate
             );
-            const existingClash = dailyRecords.findIndex((r, idx) =>
+            const existingClash = Store.getRecords().findIndex((r, idx) =>
                 idx !== duplicateIndex && (toGmt8DateKey(r.date) || r.date) === nextExistingDate
             );
             if (incomingClash !== -1 || existingClash !== -1) {
@@ -386,17 +384,17 @@ async function saveRecord(date, hours, reflection, accomplishments, tools, image
                 return;
             }
 
-            dailyRecords[duplicateIndex].date = nextExistingDate;
+            Store.getRecords()[duplicateIndex].date = nextExistingDate;
             record.date = nextIncomingDate;
-            dailyRecords.push(record);
+            Store.addRecord(record);
         }
     } else {
-        dailyRecords.push(record);
+        Store.addRecord(record);
     }
-    dailyRecords.sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
+    Store.getRecords().sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
 
-    if (!await persistDTR(dailyRecords)) {
-        dailyRecords = previous;
+    if (!await persistDTR(Store.getRecords())) {
+        Store.setRecords(previous);
         if (imageIds && imageIds.length > 0 && confirm("Save without images to free space?")) {
             deleteImagesFromStore(imageIds);
             await saveRecord(date, hours, reflection, accomplishments, tools, [], l2Data);
@@ -419,9 +417,9 @@ async function saveRecord(date, hours, reflection, accomplishments, tools, image
 async function bulkMergeRecords(importedList) {
     if (!Array.isArray(importedList) || importedList.length === 0) return;
 
-    const previous = [...dailyRecords];
+    const previous = [...Store.getRecords()];
     const existingMap = {};
-    dailyRecords.forEach(r => {
+    Store.getRecords().forEach(r => {
         const dk = toGmt8DateKey(r.date) || r.date;
         existingMap[dk] = r;
     });
@@ -459,17 +457,23 @@ async function bulkMergeRecords(importedList) {
 
         if (existingMap[dk]) {
             updateCount++;
+            // Delete old images to prevent storage inflation if the record is overwritten
+            const oldIds = existingMap[dk].imageIds || [];
+            const idsToDelete = oldIds.filter(id => !finalImageIds.includes(id));
+            if (idsToDelete.length > 0 && typeof deleteImagesFromStore === "function") {
+                deleteImagesFromStore(idsToDelete).catch(() => {});
+            }
         } else {
             newCount++;
         }
         existingMap[dk] = record;
     }
 
-    dailyRecords = Object.values(existingMap);
-    dailyRecords.sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
+    Store.setRecords(Object.values(existingMap));
+    Store.getRecords().sort((a, b) => (toGmt8DateKey(a.date) || "").localeCompare(toGmt8DateKey(b.date) || ""));
 
-    if (!await persistDTR(dailyRecords)) {
-        dailyRecords = previous;
+    if (!await persistDTR(Store.getRecords())) {
+        Store.setRecords(previous);
         alert("Bulk import failed due to storage limits.");
         return;
     }
@@ -563,3 +567,18 @@ function resolveDateConflictModal({ incomingDate, existingDate }) {
         });
     });
 }
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.isQuotaError = window.isQuotaError || isQuotaError; }
+if(typeof window !== "undefined") { window.safeSetDTR = window.safeSetDTR || safeSetDTR; }
+if(typeof window !== "undefined") { window.deleteLastRecord = window.deleteLastRecord || deleteLastRecord; }
+if(typeof window !== "undefined") { window.clearAllRecords = window.clearAllRecords || clearAllRecords; }
+if(typeof window !== "undefined") { window.hardClearAllData = window.hardClearAllData || hardClearAllData; }
+if(typeof window !== "undefined") { window.checkDataHealth = window.checkDataHealth || checkDataHealth; }
+if(typeof window !== "undefined") { window.persistDTR = window.persistDTR || persistDTR; }
+if(typeof window !== "undefined") { window.loadDTRRecords = window.loadDTRRecords || loadDTRRecords; }
+if(typeof window !== "undefined") { window.getErrorSummary = window.getErrorSummary || getErrorSummary; }
+if(typeof window !== "undefined") { window.submitDTR = window.submitDTR || submitDTR; }
+if(typeof window !== "undefined") { window.compressImage = window.compressImage || compressImage; }
+if(typeof window !== "undefined") { window.saveRecord = window.saveRecord || saveRecord; }
+if(typeof window !== "undefined") { window.bulkMergeRecords = window.bulkMergeRecords || bulkMergeRecords; }
+if(typeof window !== "undefined") { window.resolveDateConflictModal = window.resolveDateConflictModal || resolveDateConflictModal; }

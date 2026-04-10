@@ -14,15 +14,15 @@ function updateExportWeekOptions() {
     if (!select) return;
 
     const currentValue = select.value;
-    const allWeeksLabel = "All Weeks";
+    const allWeeksLabel = window.DTRI18N ? window.DTRI18N.t("all_weeks") : "All Weeks";
     select.innerHTML = `<option value="all">${allWeeksLabel}</option>`;
-    const weeks = [...new Set(dailyRecords.map(r => getWeekNumber(new Date(r.date))))].sort((a, b) => b - a);
+    const weeks = [...new Set(Store.getRecords().map(r => getWeekNumber(new Date(r.date))))].sort((a, b) => b - a);
 
     weeks.forEach(w => {
         const range = getWeekDateRange(w);
         const opt = document.createElement("option");
         opt.value = w;
-        opt.textContent = `Week ${w}`;
+        opt.textContent = window.DTRI18N ? window.DTRI18N.t("week_label", { week: w }) : `Week ${w}`;
         opt.title = `${range.start} – ${range.end}`;
         select.appendChild(opt);
     });
@@ -48,7 +48,7 @@ function updateExportWeekRangeLabel() {
 
 function getWeeklyDTR(filterWeek = "all") {
     const weeks = {};
-    dailyRecords.forEach(r => {
+    Store.getRecords().forEach(r => {
         const week = getWeekNumber(new Date(r.date));
         if (filterWeek !== "all" && week != filterWeek) return;
 
@@ -107,23 +107,27 @@ function triggerPdfDownload() {
 // ─── Export All (Daily DTR) ────────────────────────────────────────────────
 
 function exportPDF() {
-    if (!dailyRecords.length) return alert("No records to export.");
+    if (!Store.getRecords().length) return alert("No records to export.");
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("p", "mm", "a4");
     let y = 15;
+
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : (k) => k;
 
     // Title
     doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(200, 20, 0);
-    doc.text("Daily DTR Report", 105, y, { align: "center" });
+    doc.text(t("exports.daily_report_title") || "Daily DTR Report", 105, y, { align: "center" });
     y += 6;
 
     // Sub-label
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(120, 120, 120);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}  •  Total Records: ${dailyRecords.length}`, 105, y, { align: "center" });
+    const genText = t("exports.generated_on", { date: new Date().toLocaleDateString() });
+    const recText = t("exports.total_records", { count: Store.getRecords().length });
+    doc.text(`${genText}  •  ${recText}`, 105, y, { align: "center" });
     y += 6;
 
     // Rule
@@ -132,7 +136,7 @@ function exportPDF() {
     doc.line(10, y, 200, y);
     y += 8;
 
-    dailyRecords.forEach(r => {
+    Store.getRecords().forEach(r => {
         // Date / Hours header (Dark Red)
         doc.setFontSize(11);
         doc.setFont(undefined, 'bold');
@@ -148,7 +152,7 @@ function exportPDF() {
         doc.setFontSize(9);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(60, 60, 60);
-        doc.text("Reflection:", 10, y); y += 5;
+        doc.text(t("exports.summary_reflection") || "Reflection:", 10, y); y += 5;
         doc.setFont(undefined, 'normal');
         doc.setTextColor(25, 25, 25);
         const lines = doc.splitTextToSize(r.reflection || "—", 178);
@@ -158,7 +162,7 @@ function exportPDF() {
         if (Array.isArray(r.accomplishments) && r.accomplishments.length) {
             doc.setFont(undefined, 'bold');
             doc.setTextColor(60, 60, 60);
-            doc.text("Accomplishments:", 10, y); y += 5;
+            doc.text(t("exports.summary_accomplishments") || "Accomplishments:", 10, y); y += 5;
             doc.setFont(undefined, 'normal');
             doc.setTextColor(25, 25, 25);
             r.accomplishments.forEach(a => { doc.text("• " + a, 14, y); y += 5; });
@@ -169,7 +173,7 @@ function exportPDF() {
             doc.setFontSize(8);
             doc.setFont(undefined, 'italic');
             doc.setTextColor(30, 110, 110);
-            doc.text("Tools: " + r.tools.join(", "), 10, y); y += 5;
+            doc.text((t("exports.summary_tools_used") || "Tools: ") + r.tools.join(", "), 10, y); y += 5;
             doc.setFont(undefined, 'normal');
         }
 
@@ -195,26 +199,30 @@ function exportPDF() {
 // ─── Export Weekly ─────────────────────────────────────────────────────────
 
 function exportWeeklyPDF() {
-    if (!dailyRecords.length) return alert("No records to export.");
+    if (!Store.getRecords().length) return alert("No records to export.");
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("p", "mm", "a4");
-    let y = 15;
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : (k) => k;
 
     const filterWeek = document.getElementById("exportWeekSelect").value;
-    const weekLabel  = filterWeek === "all" ? "All Weeks" : `Week ${filterWeek}`;
+    const allWeeksLabel = t("ui.all_weeks") || "All Weeks";
+    const weekLabelText = t("ui.week_label", { week: filterWeek });
+    const weekLabel  = filterWeek === "all" ? allWeeksLabel : weekLabelText;
 
     // ── Report Title (Red)
     doc.setFontSize(18);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(200, 20, 0);
-    doc.text("Weekly DTR Report", 105, y, { align: "center" });
+    doc.text(t("exports.weekly_report_title") || "Weekly DTR Report", 105, y, { align: "center" });
     y += 6;
 
     // ── Sub-label (Mid Gray)
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(120, 120, 120);
-    doc.text(`Filter: ${weekLabel}  •  Generated: ${new Date().toLocaleDateString()}`, 105, y, { align: "center" });
+    const filterTxt = t("exports.filter_label", { filter: weekLabel });
+    const genTxt = t("exports.generated_on", { date: new Date().toLocaleDateString() });
+    doc.text(`${filterTxt}  •  ${genTxt}`, 105, y, { align: "center" });
     y += 8;
 
     // ── Header rule (Red)
@@ -230,23 +238,23 @@ function exportWeeklyPDF() {
         doc.setFontSize(13);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(180, 15, 0);
-        doc.text(`Week ${w.week} Summary`, 10, y);
+        doc.text(t("exports.week_summary_title", { week: w.week }), 10, y);
         y += 7;
 
         // ── Total Hours label + value (Navy Blue)
         doc.setFontSize(11);
         doc.setFont(undefined, 'normal');
         doc.setTextColor(30, 50, 140);
-        doc.text("Total OJT Hours:", 10, y);
+        doc.text(t("exports.summary_ojt_hours") || "Total OJT Hours:", 10, y);
         doc.setFont(undefined, 'bold');
-        doc.text(`${w.totalHours.toFixed(1)} hrs`, 46, y);
+        doc.text(`${w.totalHours.toFixed(1)} hrs`, 52, y);
         y += 7;
 
-        // ── L2 Telemetry row (Muted Slate)
-        doc.setFontSize(9);
-        doc.setFont(undefined, 'normal');
-        doc.setTextColor(90, 100, 115);
-        const l2 = `Personal: ${w.personalHours.toFixed(1)}h  |  Sleep: ${w.sleepHours.toFixed(1)}h  |  Recovery: ${w.recoveryHours.toFixed(1)}h`;
+        const l2Label = t("exports.summary_l2_telemetry") || "L2 Telemetry";
+        const pers = t("exports.summary_personal") || "Personal:";
+        const sleep = t("exports.summary_sleep") || "Sleep:";
+        const recov = t("exports.summary_recovery") || "Recovery:";
+        const l2 = `${l2Label} — ${pers} ${w.personalHours.toFixed(1)}h  |  ${sleep} ${w.sleepHours.toFixed(1)}h  |  ${recov} ${w.recoveryHours.toFixed(1)}h`;
         doc.text(l2, 10, y);
         y += 6;
 
@@ -305,7 +313,7 @@ function exportWeeklyPDF() {
 }
 
 function exportDOCX() {
-    if (!dailyRecords.length) return alert("No records to export.");
+    if (!Store.getRecords().length) return alert("No records to export.");
     if (!window.docx || !window.saveAs) {
         alert("DOCX export dependencies are not loaded.");
         return;
@@ -332,24 +340,28 @@ function exportDOCX() {
     const timeZoneId = (typeof getCurrentTimeZone === "function")
         ? getCurrentTimeZone()
         : DEFAULT_TIMEZONE;
-    const totalHours = dailyRecords.reduce((sum, r) => sum + (parseFloat(r.hours) || 0), 0);
+    const totalHours = Store.getRecords().reduce((sum, r) => sum + (parseFloat(r.hours) || 0), 0);
+
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : (k) => k;
+    const generatedOnText = t("exports.generated_on", { date: new Date().toLocaleDateString() });
+    const totalRecordsText = t("exports.total_records", { count: Store.getRecords().length });
 
     const children = [
         new Paragraph({
             heading: HeadingLevel.TITLE,
             alignment: AlignmentType.CENTER,
-            children: [new TextRun("Daily DTR Report")]
+            children: [new TextRun(t("exports.daily_report_title") || "Daily DTR Report")]
         }),
         new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-                new TextRun(`Generated: ${new Date().toLocaleDateString()}  |  Start: ${startDateKey}  |  End: ${semesterEndKey}  |  TZ: ${timeZoneId}  |  Required: ${requiredHours}h  |  Entries: ${dailyRecords.length}  |  Hours: ${totalHours.toFixed(1)}`)
+                new TextRun(`${generatedOnText}  |  Start: ${startDateKey}  |  End: ${semesterEndKey}  |  TZ: ${timeZoneId}  |  ${totalRecordsText}  |  Hours: ${totalHours.toFixed(1)}`)
             ]
         }),
         new Paragraph({ text: "" })
     ];
 
-    dailyRecords.forEach((r) => {
+    Store.getRecords().forEach((r) => {
         const weekNum = getWeekNumber(r.date);
         const identityLabel = getIdentityAlignmentLabel(r.identityScore || 0);
         const toolsText = Array.isArray(r.tools) && r.tools.length ? r.tools.join(", ") : "N/A";
@@ -358,18 +370,18 @@ function exportDOCX() {
         children.push(
             new Paragraph({
                 heading: HeadingLevel.HEADING_2,
-                children: [new TextRun(`${r.date} (Week ${weekNum})`)]
+                children: [new TextRun(`${r.date} (${t("ui.week_label", { week: weekNum })})`)]
             }),
             new Paragraph({
                 children: [
-                    new TextRun(`Hours: ${r.hours}h  |  Delta: ${r.delta >= 0 ? "+" : ""}${r.delta.toFixed(2)}h`)
+                    new TextRun(`${t("telemetry_dashboard.summary_hours_worked") || "Hours"}: ${r.hours}h  |  Delta: ${r.delta >= 0 ? "+" : ""}${r.delta.toFixed(2)}h`)
                 ]
             }),
-            new Paragraph({ children: [new TextRun(`Reflection: ${r.reflection || "-"}`)] }),
-            new Paragraph({ children: [new TextRun(`Tools: ${toolsText}`)] }),
+            new Paragraph({ children: [new TextRun(`${t("exports.summary_reflection") || "Reflection"}: ${r.reflection || "-"}`)] }),
+            new Paragraph({ children: [new TextRun(`${t("exports.summary_tools_used") || "Tools"}: ${toolsText}`)] }),
             new Paragraph({
                 children: [
-                    new TextRun(`L2: Personal ${parseFloat(r.personalHours) || 0}h | Sleep ${parseFloat(r.sleepHours) || 0}h | Recovery ${parseFloat(r.recoveryHours) || 0}h | Identity ${identityLabel}`)
+                    new TextRun(`${t("exports.summary_l2_telemetry") || "L2"}: ${t("exports.summary_personal") || "Personal"} ${parseFloat(r.personalHours) || 0}h | ${t("exports.summary_sleep") || "Sleep"} ${parseFloat(r.sleepHours) || 0}h | ${t("exports.summary_recovery") || "Recovery"} ${parseFloat(r.recoveryHours) || 0}h | ${t("exports.summary_identity") || "Identity"} ${identityLabel}`)
                 ]
             })
         );
@@ -399,7 +411,7 @@ function exportDOCX() {
 }
 
 function exportWeeklyDOCX() {
-    if (!dailyRecords.length) return alert("No records to export.");
+    if (!Store.getRecords().length) return alert("No records to export.");
     if (!window.docx || !window.saveAs) {
         alert("DOCX export dependencies are not loaded.");
         return;
@@ -416,54 +428,65 @@ function exportWeeklyDOCX() {
 
     const weekSelect = document.getElementById("exportWeekSelect");
     const filterWeek = weekSelect ? weekSelect.value : "all";
-    const weekLabel = filterWeek === "all" ? "All Weeks" : `Week ${filterWeek}`;
+    const allWeeksLabel = window.DTRI18N ? window.DTRI18N.t("all_weeks") : "All Weeks";
+    const weekLabelText = window.DTRI18N ? window.DTRI18N.t("week_label", { week: filterWeek }) : `Week ${filterWeek}`;
+    const weekLabel = filterWeek === "all" ? allWeeksLabel : weekLabelText;
     const weeks = getWeeklyDTR(filterWeek);
     if (!weeks.length) {
         alert("No weekly records found for the selected filter.");
         return;
     }
 
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : (k) => k;
+    const filterTxt = t("exports.filter_label", { filter: weekLabel });
+    const genTxt = t("exports.generated_on", { date: new Date().toLocaleDateString() });
+
     const children = [
         new Paragraph({
             heading: HeadingLevel.TITLE,
             alignment: AlignmentType.CENTER,
-            children: [new TextRun("Weekly DTR Report")]
+            children: [new TextRun(t("exports.weekly_report_title") || "Weekly DTR Report")]
         }),
         new Paragraph({
             alignment: AlignmentType.CENTER,
-            children: [new TextRun(`Filter: ${weekLabel}  |  Generated: ${new Date().toLocaleDateString()}`)]
+            children: [new TextRun(`${filterTxt}  |  ${genTxt}`)]
         }),
         new Paragraph({ text: "" })
     ];
 
     weeks.forEach((w) => {
         const weekRange = getWeekDateRange(w.week);
+        const l2Label = t("exports.summary_l2_telemetry") || "L2 Telemetry";
+        const pers = t("exports.summary_personal") || "Personal:";
+        const sleep = t("exports.summary_sleep") || "Sleep:";
+        const recov = t("exports.summary_recovery") || "Recovery:";
+
         children.push(
             new Paragraph({
                 heading: HeadingLevel.HEADING_2,
-                children: [new TextRun(`Week ${w.week} Summary`)]
+                children: [new TextRun(t("exports.week_summary_title", { week: w.week }))]
             }),
             new Paragraph({
                 children: [new TextRun(`${weekRange.start} - ${weekRange.end}`)]
             }),
             new Paragraph({
-                children: [new TextRun(`Total OJT Hours: ${w.totalHours.toFixed(1)}h`)]
+                children: [new TextRun(`${t("exports.summary_ojt_hours") || "Total OJT Hours:"} ${w.totalHours.toFixed(1)}h`)]
             }),
             new Paragraph({
-                children: [new TextRun(`L2: Personal ${w.personalHours.toFixed(1)}h | Sleep ${w.sleepHours.toFixed(1)}h | Recovery ${w.recoveryHours.toFixed(1)}h`)]
+                children: [new TextRun(`${l2Label}: ${pers} ${w.personalHours.toFixed(1)}h | ${sleep} ${w.sleepHours.toFixed(1)}h | ${recov} ${w.recoveryHours.toFixed(1)}h`)]
             })
         );
 
         if (w.tools.length) {
             children.push(
                 new Paragraph({
-                    children: [new TextRun(`Tools Used: ${w.tools.join(", ")}`)]
+                    children: [new TextRun(`${t("exports.summary_tools_used") || "Tools Used:"} ${w.tools.join(", ")}`)]
                 })
             );
         }
 
         if (w.accomplishments.length) {
-            children.push(new Paragraph({ children: [new TextRun("Accomplishments:")] }));
+            children.push(new Paragraph({ children: [new TextRun(t("exports.summary_accomplishments") || "Accomplishments:")] }));
             w.accomplishments.forEach((a) => {
                 const text = `[${a.date}] ${a.text || ""}`.trim();
                 children.push(new Paragraph({ text, bullet: { level: 0 } }));
@@ -542,14 +565,14 @@ async function normalizeRecordForJson(record, includeImages = false) {
 }
 
 async function exportRecordsJSON() {
-    if (!Array.isArray(dailyRecords) || !dailyRecords.length) {
+    if (!Array.isArray(Store.getRecords()) || !Store.getRecords().length) {
         alert("No records to export.");
         return;
     }
 
     const includeImages = confirm("Include images in JSON export?\n(Note: This will significantly increase file size)");
 
-    const records = await Promise.all(dailyRecords.map(r => normalizeRecordForJson(r, includeImages)));
+    const records = await Promise.all(Store.getRecords().map(r => normalizeRecordForJson(r, includeImages)));
 
     const payload = {
         type: "custom-dtr-records-export",
@@ -561,7 +584,7 @@ async function exportRecordsJSON() {
             semesterEndDate: getCurrentSemesterEndDate(),
             timeZone: getCurrentTimeZone()
         },
-        recordCount: dailyRecords.length,
+        recordCount: Store.getRecords().length,
         records: records
     };
 
@@ -841,3 +864,30 @@ function handleJsonImportFile(event) {
     };
     reader.readAsText(file);
 }
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.updateExportWeekOptions = window.updateExportWeekOptions || updateExportWeekOptions; }
+if(typeof window !== "undefined") { window.updateExportWeekRangeLabel = window.updateExportWeekRangeLabel || updateExportWeekRangeLabel; }
+if(typeof window !== "undefined") { window.getWeeklyDTR = window.getWeeklyDTR || getWeeklyDTR; }
+if(typeof window !== "undefined") { window.showPdfPreview = window.showPdfPreview || showPdfPreview; }
+if(typeof window !== "undefined") { window.closePdfPreview = window.closePdfPreview || closePdfPreview; }
+if(typeof window !== "undefined") { window.triggerPdfDownload = window.triggerPdfDownload || triggerPdfDownload; }
+if(typeof window !== "undefined") { window.exportPDF = window.exportPDF || exportPDF; }
+if(typeof window !== "undefined") { window.exportWeeklyPDF = window.exportWeeklyPDF || exportWeeklyPDF; }
+if(typeof window !== "undefined") { window.exportDOCX = window.exportDOCX || exportDOCX; }
+if(typeof window !== "undefined") { window.exportWeeklyDOCX = window.exportWeeklyDOCX || exportWeeklyDOCX; }
+if(typeof window !== "undefined") { window.getRecordTimelineData = window.getRecordTimelineData || getRecordTimelineData; }
+if(typeof window !== "undefined") { window.normalizeRecordForJson = window.normalizeRecordForJson || normalizeRecordForJson; }
+if(typeof window !== "undefined") { window.exportRecordsJSON = window.exportRecordsJSON || exportRecordsJSON; }
+if(typeof window !== "undefined") { window.triggerJsonExportDownload = window.triggerJsonExportDownload || triggerJsonExportDownload; }
+if(typeof window !== "undefined") { window.closeJsonExportPreview = window.closeJsonExportPreview || closeJsonExportPreview; }
+if(typeof window !== "undefined") { window.sanitizeJsonFileName = window.sanitizeJsonFileName || sanitizeJsonFileName; }
+if(typeof window !== "undefined") { window.confirmJsonExportDownload = window.confirmJsonExportDownload || confirmJsonExportDownload; }
+if(typeof window !== "undefined") { window.extractJsonImportRecords = window.extractJsonImportRecords || extractJsonImportRecords; }
+if(typeof window !== "undefined") { window.normalizeRecordForImport = window.normalizeRecordForImport || normalizeRecordForImport; }
+if(typeof window !== "undefined") { window.buildRecordFromImport = window.buildRecordFromImport || buildRecordFromImport; }
+if(typeof window !== "undefined") { window.openJsonImportPreviewModal = window.openJsonImportPreviewModal || openJsonImportPreviewModal; }
+if(typeof window !== "undefined") { window.closeJsonImportPreviewModal = window.closeJsonImportPreviewModal || closeJsonImportPreviewModal; }
+if(typeof window !== "undefined") { window.applyImportedRecordToForm = window.applyImportedRecordToForm || applyImportedRecordToForm; }
+if(typeof window !== "undefined") { window.confirmJsonImportToForm = window.confirmJsonImportToForm || confirmJsonImportToForm; }
+if(typeof window !== "undefined") { window.bulkImportAllRecords = window.bulkImportAllRecords || bulkImportAllRecords; }
+if(typeof window !== "undefined") { window.handleJsonImportFile = window.handleJsonImportFile || handleJsonImportFile; }

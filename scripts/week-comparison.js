@@ -43,8 +43,10 @@ function getThemeColors() {
 }
 
 function renderWeekComparison(logs) {
+    const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
     if (!logs || logs.length === 0) {
-        document.getElementById("comparisonTableBody").innerHTML = '<tr><td colspan="5">No data available</td></tr>';
+        const noDataLabel = t ? t("no_data_available") : "No data available";
+        document.getElementById("comparisonTableBody").innerHTML = `<tr><td colspan="5" data-i18n="no_data_available">${noDataLabel}</td></tr>`;
         return;
     }
 
@@ -64,7 +66,7 @@ function renderWeekComparison(logs) {
     const tbody = document.getElementById("comparisonTableBody");
     tbody.innerHTML = "";
 
-    const labels = sortedWeeks.map(w => `Week ${w}`);
+    const labels = sortedWeeks.map(w => t ? t("week_label", { week: w }) : `Week ${w}`);
     const ojtData = sortedWeeks.map(w => weekGroups[w].hours);
     const personalData = sortedWeeks.map(w => weekGroups[w].personal);
 
@@ -74,7 +76,7 @@ function renderWeekComparison(logs) {
             labels,
             datasets: [
                 {
-                    label: 'OJT Hours',
+                    label: t ? t('chart_effort_ojt') : 'OJT Hours',
                     data: ojtData,
                     borderColor: colors.accent,
                     backgroundColor: colors.accent + '22',
@@ -82,7 +84,7 @@ function renderWeekComparison(logs) {
                     tension: 0.3
                 },
                 {
-                    label: 'Personal Hours',
+                    label: t ? t('chart_effort_personal') : 'Personal Hours',
                     data: personalData,
                     borderColor: colors.excellent,
                     backgroundColor: colors.excellent + '22',
@@ -123,7 +125,7 @@ function renderWeekComparison(logs) {
 
         const row = document.createElement("tr");
         row.innerHTML = `
-            <td>Week ${w}<br><small>${rangeLabel}</small></td>
+            <td>${t ? t("week_label", { week: w }) : `Week ${w}`}<br><small>${rangeLabel}</small></td>
             <td>${data.hours.toFixed(1)}h</td>
             <td>${data.personal.toFixed(1)}h</td>
             <td class="${growthClass}">${growthLabel}</td>
@@ -139,3 +141,8 @@ function renderWeekComparison(logs) {
     document.getElementById("grandTotalHours").innerText = totalHours.toFixed(1) + "h";
     document.getElementById("grandTotalPersonal").innerText = totalPersonal.toFixed(1) + "h";
 }
+
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.fetchTelemetryData = window.fetchTelemetryData || fetchTelemetryData; }
+if(typeof window !== "undefined") { window.getThemeColors = window.getThemeColors || getThemeColors; }
+if(typeof window !== "undefined") { window.renderWeekComparison = window.renderWeekComparison || renderWeekComparison; }

@@ -16,7 +16,12 @@
 .telemetry-header-inner h1 {
   grid-area: title;
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.55rem;
+  font-weight: 800;
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--accent);
 }
 
 .telemetry-window-control {
@@ -77,12 +82,16 @@
 .section-title {
   font-size: 0.95rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   color: var(--accent);
-  margin: 0 0 10px 0;
-  font-weight: 700;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 4px;
+  margin: 0;
+  font-weight: 800;
+  position: relative;
+}
+
+/* Removed decorative partial underline to favor full-width section border */
+.section-title::after {
+  display: none;
 }
 
 /* ===== STATS GRID (3 Columns) ===== */
@@ -460,9 +469,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--accent);
   padding-bottom: 4px;
+  margin-bottom: 15px;
 }
 
 .ohlc-legend {

@@ -7,7 +7,7 @@ const html = fs.readFileSync('index.html', 'utf8');
 const dom = new JSDOM(html, { 
   runScripts: "dangerously", 
   resources: "usable",
-  url: "file:///" + process.cwd().replace(/\\/g, "/") + "/index.html"
+  url: "http://localhost/"
 });
 
 dom.window.onerror = function(msg, source, lineno, colno, error) {

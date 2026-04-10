@@ -255,19 +255,29 @@ function getImageStoreUsageBytes() {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(DTR_IMAGE_STORE_NAME, "readonly");
             const store = tx.objectStore(DTR_IMAGE_STORE_NAME);
-            const req = store.getAll();
-            req.onsuccess = () => {
-                const items = req.result || [];
-                const bytes = items.reduce((sum, item) => {
-                    if (!item) return sum;
-                    if (item.blob instanceof Blob) return sum + (item.blob.size || 0);
-                    // Mobile IDB strings count as 2 bytes per character under iOS quota enforcement
-                    if (typeof item.dataUrl === "string") return sum + (item.dataUrl.length * 2);
-                    return sum;
-                }, 0);
-                resolve(bytes);
+            let totalBytes = 0;
+            
+            const req = store.openCursor();
+            req.onsuccess = (e) => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    const item = cursor.value;
+                    if (item) {
+                        if (item.blob instanceof Blob) {
+                            totalBytes += (item.blob.size || 0);
+                        } else if (typeof item.dataUrl === "string") {
+                            // Mobile IDB strings count as 2 bytes per character under iOS quota enforcement
+                            totalBytes += (item.dataUrl.length * 2);
+                        } else if (typeof item.sizeBytes === "number") {
+                            totalBytes += item.sizeBytes;
+                        }
+                    }
+                    cursor.continue();
+                } else {
+                    resolve(totalBytes);
+                }
             };
-            req.onerror = () => reject(buildStoreError("getImageStoreUsageBytes request", req.error));
+            req.onerror = () => reject(buildStoreError("getImageStoreUsageBytes cursor", req.error));
         });
     });
 }
@@ -343,3 +353,22 @@ function getRecordImageUrls(record) {
     }
     return Promise.resolve([]);
 }
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.buildStoreError = window.buildStoreError || buildStoreError; }
+if(typeof window !== "undefined") { window.openImageDB = window.openImageDB || openImageDB; }
+if(typeof window !== "undefined") { window.generateImageId = window.generateImageId || generateImageId; }
+if(typeof window !== "undefined") { window.blobToDataUrl = window.blobToDataUrl || blobToDataUrl; }
+if(typeof window !== "undefined") { window.saveImageToStore = window.saveImageToStore || saveImageToStore; }
+if(typeof window !== "undefined") { window.getImageEntryFromStore = window.getImageEntryFromStore || getImageEntryFromStore; }
+if(typeof window !== "undefined") { window.putImageEntryToStore = window.putImageEntryToStore || putImageEntryToStore; }
+if(typeof window !== "undefined") { window.backupOriginalImageIfMissing = window.backupOriginalImageIfMissing || backupOriginalImageIfMissing; }
+if(typeof window !== "undefined") { window.restoreOriginalImageForId = window.restoreOriginalImageForId || restoreOriginalImageForId; }
+if(typeof window !== "undefined") { window.getImageFromStore = window.getImageFromStore || getImageFromStore; }
+if(typeof window !== "undefined") { window.deleteImageFromStore = window.deleteImageFromStore || deleteImageFromStore; }
+if(typeof window !== "undefined") { window.deleteImagesFromStore = window.deleteImagesFromStore || deleteImagesFromStore; }
+if(typeof window !== "undefined") { window.getImageStoreUsageBytes = window.getImageStoreUsageBytes || getImageStoreUsageBytes; }
+if(typeof window !== "undefined") { window.getImageStoreEstimate = window.getImageStoreEstimate || getImageStoreEstimate; }
+if(typeof window !== "undefined") { window.saveRecordsToStore = window.saveRecordsToStore || saveRecordsToStore; }
+if(typeof window !== "undefined") { window.getRecordsFromStore = window.getRecordsFromStore || getRecordsFromStore; }
+if(typeof window !== "undefined") { window.clearRecordsFromStore = window.clearRecordsFromStore || clearRecordsFromStore; }
+if(typeof window !== "undefined") { window.getRecordImageUrls = window.getRecordImageUrls || getRecordImageUrls; }

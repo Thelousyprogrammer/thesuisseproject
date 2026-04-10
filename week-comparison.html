@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Week Comparison | DTR Telemetry</title>
+    <title data-i18n="week_comparison.week_comparison_title">Week Comparison | DTR Telemetry</title>
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/telemetry.css">
     <link rel="stylesheet" href="css/theme.css">
@@ -60,37 +60,37 @@
 <div class="comparison-container">
     <header class="telemetry-header card">
         <div class="telemetry-header-inner">
-            <h1>Weekly Effort Comparison</h1>
+            <h1 data-i18n="telemetry_weekly_comparison_view">Weekly Comparison View</h1>
             <div class="telemetry-header-actions">
-                <button class="telemetry-btn" onclick="window.location.href='telemetry.html'">Back to Telemetry</button>
+                <button class="telemetry-btn" onclick="window.location.href='telemetry.html'" data-i18n="back_to_telemetry">Back to Telemetry</button>
             </div>
         </div>
     </header>
 
     <div class="summary-cards">
         <div class="summary-card">
-            <h3>Total OJT Hours</h3>
+            <h3 data-i18n="total_ojt_hours">Total OJT Hours</h3>
             <strong id="grandTotalHours">0.0h</strong>
         </div>
         <div class="summary-card">
-            <h3>Total Personal Hours</h3>
+            <h3 data-i18n="total_personal_hours">Total Personal Hours</h3>
             <strong id="grandTotalPersonal">0.0h</strong>
         </div>
     </div>
 
     <div class="card">
-        <h3>Weekly Effort Trend</h3>
+        <h3 data-i18n="weekly_effort_trend">Weekly Effort Trend</h3>
         <div class="chart-wrap" style="height: 300px; margin-bottom: 20px;">
             <canvas id="growthChart"></canvas>
         </div>
         <table class="comparison-table">
             <thead>
                 <tr>
-                    <th>Week Period</th>
-                    <th>OJT Hours</th>
-                    <th>Personal Hours</th>
-                    <th>Effort Gain (%)</th>
-                    <th>Time Efficiency</th>
+                    <th data-i18n="week_period">Week Period</th>
+                    <th data-i18n="chart_effort_ojt">OJT Hours</th>
+                    <th data-i18n="chart_effort_personal">Personal Hours</th>
+                    <th data-i18n="effort_gain_pct">Effort Gain (%)</th>
+                    <th data-i18n="time_efficiency">Time Efficiency</th>
                 </tr>
             </thead>
             <tbody id="comparisonTableBody">
@@ -101,8 +101,15 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="scripts/dtr-core.js"></script>
-<script src="scripts/dtr-storage.js"></script>
-<script src="scripts/week-comparison.js"></script>
+<script type="module" src="scripts/dtr-core.js"></script>
+<script type="module" src="scripts/dtr-storage.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/dist/index.min.js"></script>
+<script type="module" src="scripts/dtr-i18n.js"></script>
+<script type="module" src="scripts/week-comparison.js"></script>
+<script>
+    if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
+      window.DTRI18N.bootstrap();
+    }
+</script>
 </body>
 </html>

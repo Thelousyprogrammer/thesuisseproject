@@ -13,7 +13,7 @@ function getReflectionSelectedWeek() {
     if (!select) return null;
     const raw = select.value;
     if (raw === "current") {
-        const latestDate = dailyRecords.length ? dailyRecords[dailyRecords.length - 1].date : toGmt8DateKey(new Date());
+        const latestDate = Store.getRecords().length ? Store.getRecords()[Store.getRecords().length - 1].date : toGmt8DateKey(new Date());
         return getWeekNumber(latestDate);
     }
     const n = parseInt(raw, 10);
@@ -25,15 +25,15 @@ function updateReflectionWeekOptions() {
     if (!select) return;
 
     const currentValue = select.value || "current";
-    const currentWeekLabel = "Current Week";
+    const currentWeekLabel = window.DTRI18N ? window.DTRI18N.t("current_week") : "Current Week";
     select.innerHTML = `<option value="current">${currentWeekLabel}</option>`;
 
-    const weeks = [...new Set(dailyRecords.map(r => getWeekNumber(r.date)))].sort((a, b) => b - a);
+    const weeks = [...new Set(Store.getRecords().map(r => getWeekNumber(r.date)))].sort((a, b) => b - a);
     weeks.forEach((w) => {
         const range = getWeekDateRange(w);
         const opt = document.createElement("option");
         opt.value = String(w);
-        opt.textContent = `Week ${w}`;
+        opt.textContent = window.DTRI18N ? window.DTRI18N.t("week_label", { week: w }) : `Week ${w}`;
         opt.title = `${range.start} - ${range.end}`;
         select.appendChild(opt);
     });
@@ -152,8 +152,8 @@ function saveOjtStartDateFromUI() {
 }
 
 async function wipeAllDtrDataForTimelineChange() {
-    const allImageIds = (dailyRecords || []).flatMap((r) => r.imageIds || []);
-    dailyRecords = [];
+    const allImageIds = (Store.getRecords() || []).flatMap((r) => r.imageIds || []);
+    Store.clear();
 
     if (typeof clearRecordsFromStore === "function") {
         try { await clearRecordsFromStore(); } catch (_) {}
@@ -245,7 +245,7 @@ async function confirmSaveOjtTimelineSettings() {
     renderWeeklyGraph();
 
     const dateInput = document.getElementById("date");
-    const activeDate = dateInput && dateInput.value ? dateInput.value : (dailyRecords.length ? dailyRecords[dailyRecords.length - 1].date : null);
+    const activeDate = dateInput && dateInput.value ? dateInput.value : (Store.getRecords().length ? Store.getRecords()[Store.getRecords().length - 1].date : null);
     if (activeDate) updateWeeklyCounter(activeDate);
 
     if (shouldWipeData) {
@@ -254,3 +254,14 @@ async function confirmSaveOjtTimelineSettings() {
         alert(`Timeline saved: ${nextStartDate} | Required: ${requiredHours}h | End: ${semesterEndInput.value} | TZ: ${timezoneSelect.value}`);
     }
 }
+// --- EXPOSE TO WINDOW FOR HTML INLINE CONTROLLERS ---
+if(typeof window !== "undefined") { window.changeSortMode = window.changeSortMode || changeSortMode; }
+if(typeof window !== "undefined") { window.getReflectionSelectedWeek = window.getReflectionSelectedWeek || getReflectionSelectedWeek; }
+if(typeof window !== "undefined") { window.updateReflectionWeekOptions = window.updateReflectionWeekOptions || updateReflectionWeekOptions; }
+if(typeof window !== "undefined") { window.changeReflectionViewMode = window.changeReflectionViewMode || changeReflectionViewMode; }
+if(typeof window !== "undefined") { window.closeOjtConfirmModal = window.closeOjtConfirmModal || closeOjtConfirmModal; }
+if(typeof window !== "undefined") { window.applyDtrDateIntegrityGuardToInputs = window.applyDtrDateIntegrityGuardToInputs || applyDtrDateIntegrityGuardToInputs; }
+if(typeof window !== "undefined") { window.populateOjtTimeZoneOptions = window.populateOjtTimeZoneOptions || populateOjtTimeZoneOptions; }
+if(typeof window !== "undefined") { window.saveOjtStartDateFromUI = window.saveOjtStartDateFromUI || saveOjtStartDateFromUI; }
+if(typeof window !== "undefined") { window.wipeAllDtrDataForTimelineChange = window.wipeAllDtrDataForTimelineChange || wipeAllDtrDataForTimelineChange; }
+if(typeof window !== "undefined") { window.confirmSaveOjtTimelineSettings = window.confirmSaveOjtTimelineSettings || confirmSaveOjtTimelineSettings; }
