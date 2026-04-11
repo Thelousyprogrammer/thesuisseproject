@@ -473,6 +473,14 @@ preview_to_form = "Preview to Form"
 placeholder_export_filename = "DTR_Record_Name_YYYY-MM-DD.json"
 choose_week_export = "Choose a week to export"
 
+all_records = "All Records"
+start_label = "Start"
+end_label = "End"
+timezone_label = "TZ"
+total_hours_label = "Hours"
+not_available = "N/A"
+delta_label = "Delta"
+
 [simulator]
 telemetry_performance_simulator = "Performance Simulator"
 telemetry_enter_sim_mode = "Enter Sim Mode"
