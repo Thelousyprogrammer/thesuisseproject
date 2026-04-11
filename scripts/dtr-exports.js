@@ -72,6 +72,16 @@ function getWeeklyDTR(filterWeek = "all") {
     return Object.values(weeks).map(w => ({ ...w, tools: [...w.tools] }));
 }
 
+function getPDFLabel(t, key, defaultText, params = {}) {
+    let value = t(key, params) || defaultText;
+    if (typeof value === 'string' && params && Object.keys(params).length) {
+        Object.keys(params).forEach(param => {
+            value = value.replace(new RegExp(`\\{${param}\\}`, 'g'), params[param]);
+        });
+    }
+    return value;
+}
+
 // ─── PDF Preview Modal ─────────────────────────────────────────────────────
 
 function showPdfPreview(doc, fileName, title) {
@@ -118,15 +128,15 @@ function exportPDF() {
     doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(200, 20, 0);
-    doc.text(t("exports.daily_report_title") || "Daily DTR Report", 105, y, { align: "center" });
+    doc.text(getPDFLabel(t, "exports.daily_report_title", "Daily DTR Report"), 105, y, { align: "center" });
     y += 6;
 
     // Sub-label
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(120, 120, 120);
-    const genText = t("exports.generated_on", { date: new Date().toLocaleDateString() });
-    const recText = t("exports.total_records", { count: Store.getRecords().length });
+    const genText = getPDFLabel(t, "exports.generated_on", "Generated: {date}", { date: new Date().toLocaleDateString() });
+    const recText = getPDFLabel(t, "exports.total_records", "Total Records: {count}", { count: Store.getRecords().length });
     doc.text(`${genText}  •  ${recText}`, 105, y, { align: "center" });
     y += 6;
 
@@ -152,7 +162,7 @@ function exportPDF() {
         doc.setFontSize(9);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(60, 60, 60);
-        doc.text(t("exports.summary_reflection") || "Reflection:", 10, y); y += 5;
+        doc.text(getPDFLabel(t, "exports.summary_reflection", "Reflection:"), 10, y); y += 5;
         doc.setFont(undefined, 'normal');
         doc.setTextColor(25, 25, 25);
         const lines = doc.splitTextToSize(r.reflection || "—", 178);
@@ -162,7 +172,7 @@ function exportPDF() {
         if (Array.isArray(r.accomplishments) && r.accomplishments.length) {
             doc.setFont(undefined, 'bold');
             doc.setTextColor(60, 60, 60);
-            doc.text(t("exports.summary_accomplishments") || "Accomplishments:", 10, y); y += 5;
+            doc.text(getPDFLabel(t, "exports.summary_accomplishments", "Accomplishments:"), 10, y); y += 5;
             doc.setFont(undefined, 'normal');
             doc.setTextColor(25, 25, 25);
             r.accomplishments.forEach(a => { doc.text("• " + a, 14, y); y += 5; });
@@ -173,7 +183,7 @@ function exportPDF() {
             doc.setFontSize(8);
             doc.setFont(undefined, 'italic');
             doc.setTextColor(30, 110, 110);
-            doc.text((t("exports.summary_tools_used") || "Tools: ") + r.tools.join(", "), 10, y); y += 5;
+            doc.text((getPDFLabel(t, "exports.summary_tools_used", "Tools:") + " " ) + r.tools.join(", "), 10, y); y += 5;
             doc.setFont(undefined, 'normal');
         }
 
@@ -181,7 +191,7 @@ function exportPDF() {
         doc.setFontSize(8);
         doc.setFont(undefined, 'normal');
         doc.setTextColor(90, 100, 115);
-        const tel = `L2 — Personal: ${r.personalHours}h  |  Sleep: ${r.sleepHours}h  |  Recovery: ${r.recoveryHours}h  |  Identity: ${r.identityScore || "—"}`;
+        const tel = `${getPDFLabel(t, "exports.summary_l2_telemetry", "L2 Telemetry")} — ${getPDFLabel(t, "exports.summary_personal", "Personal:")} ${r.personalHours}h  |  ${getPDFLabel(t, "exports.summary_sleep", "Sleep:")} ${r.sleepHours}h  |  ${getPDFLabel(t, "exports.summary_recovery", "Recovery:")} ${r.recoveryHours}h  |  ${getPDFLabel(t, "exports.summary_identity", "Identity:")} ${r.identityScore || "—"}`;
         doc.text(tel, 10, y); y += 8;
 
         // Thin row separator
@@ -193,7 +203,9 @@ function exportPDF() {
         if (y > 260) { doc.addPage(); y = 15; }
     });
 
-    showPdfPreview(doc, getTodayFileName("Daily_DTR_Report", "pdf"), "Daily DTR Report – All Records");
+    const previewAllRecords = getPDFLabel(t, "exports.all_records", "All Records");
+    const previewDailyTitle = `${getPDFLabel(t, "exports.daily_report_title", "Daily DTR Report")} – ${previewAllRecords}`;
+    showPdfPreview(doc, getTodayFileName("Daily_DTR_Report", "pdf"), previewDailyTitle);
 }
 
 // ─── Export Weekly ─────────────────────────────────────────────────────────
@@ -205,23 +217,23 @@ function exportWeeklyPDF() {
     const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : (k) => k;
 
     const filterWeek = document.getElementById("exportWeekSelect").value;
-    const allWeeksLabel = t("ui.all_weeks") || "All Weeks";
-    const weekLabelText = t("ui.week_label", { week: filterWeek });
+    const allWeeksLabel = getPDFLabel(t, "ui.all_weeks", "All Weeks");
+    const weekLabelText = getPDFLabel(t, "ui.week_label", "Week {week}", { week: filterWeek });
     const weekLabel  = filterWeek === "all" ? allWeeksLabel : weekLabelText;
 
-    // ── Report Title (Red)
+    let y = 20;
     doc.setFontSize(18);
     doc.setFont(undefined, 'bold');
     doc.setTextColor(200, 20, 0);
-    doc.text(t("exports.weekly_report_title") || "Weekly DTR Report", 105, y, { align: "center" });
+    doc.text(getPDFLabel(t, "exports.weekly_report_title", "Weekly DTR Report"), 105, y, { align: "center" });
     y += 6;
 
     // ── Sub-label (Mid Gray)
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
     doc.setTextColor(120, 120, 120);
-    const filterTxt = t("exports.filter_label", { filter: weekLabel });
-    const genTxt = t("exports.generated_on", { date: new Date().toLocaleDateString() });
+    const filterTxt = getPDFLabel(t, "exports.filter_label", "Filter: {filter}", { filter: weekLabel });
+    const genTxt = getPDFLabel(t, "exports.generated_on", "Generated: {date}", { date: new Date().toLocaleDateString() });
     doc.text(`${filterTxt}  •  ${genTxt}`, 105, y, { align: "center" });
     y += 8;
 
@@ -238,22 +250,22 @@ function exportWeeklyPDF() {
         doc.setFontSize(13);
         doc.setFont(undefined, 'bold');
         doc.setTextColor(180, 15, 0);
-        doc.text(t("exports.week_summary_title", { week: w.week }), 10, y);
+        doc.text(getPDFLabel(t, "exports.week_summary_title", "Week {week} Summary", { week: w.week }), 10, y);
         y += 7;
 
         // ── Total Hours label + value (Navy Blue)
         doc.setFontSize(11);
         doc.setFont(undefined, 'normal');
         doc.setTextColor(30, 50, 140);
-        doc.text(t("exports.summary_ojt_hours") || "Total OJT Hours:", 10, y);
+        doc.text(getPDFLabel(t, "exports.summary_ojt_hours", "Total OJT Hours:"), 10, y);
         doc.setFont(undefined, 'bold');
         doc.text(`${w.totalHours.toFixed(1)} hrs`, 52, y);
         y += 7;
 
-        const l2Label = t("exports.summary_l2_telemetry") || "L2 Telemetry";
-        const pers = t("exports.summary_personal") || "Personal:";
-        const sleep = t("exports.summary_sleep") || "Sleep:";
-        const recov = t("exports.summary_recovery") || "Recovery:";
+        const l2Label = getPDFLabel(t, "exports.summary_l2_telemetry", "L2 Telemetry");
+        const pers = getPDFLabel(t, "exports.summary_personal", "Personal:");
+        const sleep = getPDFLabel(t, "exports.summary_sleep", "Sleep:");
+        const recov = getPDFLabel(t, "exports.summary_recovery", "Recovery:");
         const l2 = `${l2Label} — ${pers} ${w.personalHours.toFixed(1)}h  |  ${sleep} ${w.sleepHours.toFixed(1)}h  |  ${recov} ${w.recoveryHours.toFixed(1)}h`;
         doc.text(l2, 10, y);
         y += 6;
@@ -263,7 +275,7 @@ function exportWeeklyPDF() {
             doc.setFontSize(9);
             doc.setFont(undefined, 'italic');
             doc.setTextColor(30, 110, 110);
-            const toolLines = doc.splitTextToSize(`Tools Used: ${w.tools.join(", ")}`, 185);
+            const toolLines = doc.splitTextToSize(`${getPDFLabel(t, "exports.summary_tools_used", "Tools Used:")} ${w.tools.join(", ")}`, 185);
             toolLines.forEach(line => { doc.text(line, 10, y); y += 5; });
             doc.setFont(undefined, 'normal');
             y += 1;
@@ -274,7 +286,7 @@ function exportWeeklyPDF() {
             doc.setFontSize(10);
             doc.setFont(undefined, 'bold');
             doc.setTextColor(60, 60, 60);
-            doc.text("Accomplishments:", 10, y);
+            doc.text(getPDFLabel(t, "exports.summary_accomplishments", "Accomplishments:"), 10, y);
             y += 5;
 
             w.accomplishments.forEach(a => {
@@ -309,7 +321,8 @@ function exportWeeklyPDF() {
         if (y > 260) { doc.addPage(); y = 15; }
     });
 
-    showPdfPreview(doc, getTodayFileName("WeeklyReport", "pdf"), `Weekly DTR Report – ${weekLabel}`);
+    const previewWeeklyTitle = `${getPDFLabel(t, "exports.weekly_report_title", "Weekly DTR Report")} – ${weekLabel}`;
+    showPdfPreview(doc, getTodayFileName("WeeklyReport", "pdf"), previewWeeklyTitle);
 }
 
 function exportDOCX() {
@@ -343,19 +356,25 @@ function exportDOCX() {
     const totalHours = Store.getRecords().reduce((sum, r) => sum + (parseFloat(r.hours) || 0), 0);
 
     const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : (k) => k;
-    const generatedOnText = t("exports.generated_on", { date: new Date().toLocaleDateString() });
-    const totalRecordsText = t("exports.total_records", { count: Store.getRecords().length });
+    const generatedOnText = getPDFLabel(t, "exports.generated_on", "Generated: {date}", { date: new Date().toLocaleDateString() });
+    const totalRecordsText = getPDFLabel(t, "exports.total_records", "Total Records: {count}", { count: Store.getRecords().length });
+    const startLabel = getPDFLabel(t, "exports.start_label", "Start");
+    const endLabel = getPDFLabel(t, "exports.end_label", "End");
+    const timezoneLabel = getPDFLabel(t, "exports.timezone_label", "TZ");
+    const totalHoursLabel = getPDFLabel(t, "exports.total_hours_label", "Hours");
+    const notAvailableLabel = getPDFLabel(t, "exports.not_available", "N/A");
+    const deltaLabel = getPDFLabel(t, "exports.delta_label", "Delta");
 
     const children = [
         new Paragraph({
             heading: HeadingLevel.TITLE,
             alignment: AlignmentType.CENTER,
-            children: [new TextRun(t("exports.daily_report_title") || "Daily DTR Report")]
+            children: [new TextRun(getPDFLabel(t, "exports.daily_report_title", "Daily DTR Report"))]
         }),
         new Paragraph({
             alignment: AlignmentType.CENTER,
             children: [
-                new TextRun(`${generatedOnText}  |  Start: ${startDateKey}  |  End: ${semesterEndKey}  |  TZ: ${timeZoneId}  |  ${totalRecordsText}  |  Hours: ${totalHours.toFixed(1)}`)
+                new TextRun(`${generatedOnText}  |  ${startLabel}: ${startDateKey}  |  ${endLabel}: ${semesterEndKey}  |  ${timezoneLabel}: ${timeZoneId}  |  ${totalRecordsText}  |  ${totalHoursLabel}: ${totalHours.toFixed(1)}`)
             ]
         }),
         new Paragraph({ text: "" })
@@ -364,30 +383,30 @@ function exportDOCX() {
     Store.getRecords().forEach((r) => {
         const weekNum = getWeekNumber(r.date);
         const identityLabel = getIdentityAlignmentLabel(r.identityScore || 0);
-        const toolsText = Array.isArray(r.tools) && r.tools.length ? r.tools.join(", ") : "N/A";
+        const toolsText = Array.isArray(r.tools) && r.tools.length ? r.tools.join(", ") : notAvailableLabel;
         const accomplishments = Array.isArray(r.accomplishments) ? r.accomplishments.filter(Boolean) : [];
 
         children.push(
             new Paragraph({
                 heading: HeadingLevel.HEADING_2,
-                children: [new TextRun(`${r.date} (${t("ui.week_label", { week: weekNum })})`)]
+                children: [new TextRun(`${r.date} (${getPDFLabel(t, "ui.week_label", "Week {week}", { week: weekNum })})`)]
             }),
             new Paragraph({
                 children: [
-                    new TextRun(`${t("telemetry_dashboard.summary_hours_worked") || "Hours"}: ${r.hours}h  |  Delta: ${r.delta >= 0 ? "+" : ""}${r.delta.toFixed(2)}h`)
+                    new TextRun(`${t("telemetry_dashboard.summary_hours_worked") || "Hours"}: ${r.hours}h  |  ${deltaLabel}: ${r.delta >= 0 ? "+" : ""}${r.delta.toFixed(2)}h`)
                 ]
             }),
-            new Paragraph({ children: [new TextRun(`${t("exports.summary_reflection") || "Reflection"}: ${r.reflection || "-"}`)] }),
-            new Paragraph({ children: [new TextRun(`${t("exports.summary_tools_used") || "Tools"}: ${toolsText}`)] }),
+            new Paragraph({ children: [new TextRun(`${getPDFLabel(t, "exports.summary_reflection", "Reflection")}: ${r.reflection || "-"}`)] }),
+            new Paragraph({ children: [new TextRun(`${getPDFLabel(t, "exports.summary_tools_used", "Tools")}: ${toolsText}`)] }),
             new Paragraph({
                 children: [
-                    new TextRun(`${t("exports.summary_l2_telemetry") || "L2"}: ${t("exports.summary_personal") || "Personal"} ${parseFloat(r.personalHours) || 0}h | ${t("exports.summary_sleep") || "Sleep"} ${parseFloat(r.sleepHours) || 0}h | ${t("exports.summary_recovery") || "Recovery"} ${parseFloat(r.recoveryHours) || 0}h | ${t("exports.summary_identity") || "Identity"} ${identityLabel}`)
+                    new TextRun(`${getPDFLabel(t, "exports.summary_l2_telemetry", "L2 Telemetry")}: ${getPDFLabel(t, "exports.summary_personal", "Personal")} ${parseFloat(r.personalHours) || 0}h | ${getPDFLabel(t, "exports.summary_sleep", "Sleep")} ${parseFloat(r.sleepHours) || 0}h | ${getPDFLabel(t, "exports.summary_recovery", "Recovery")} ${parseFloat(r.recoveryHours) || 0}h | ${getPDFLabel(t, "exports.summary_identity", "Identity")} ${identityLabel}`)
                 ]
             })
         );
 
         if (accomplishments.length) {
-            children.push(new Paragraph({ children: [new TextRun("Accomplishments:")] }));
+            children.push(new Paragraph({ children: [new TextRun(getPDFLabel(t, "exports.summary_accomplishments", "Accomplishments:"))] }));
             accomplishments.forEach((a) => {
                 children.push(new Paragraph({ text: a, bullet: { level: 0 } }));
             });
@@ -438,14 +457,14 @@ function exportWeeklyDOCX() {
     }
 
     const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : (k) => k;
-    const filterTxt = t("exports.filter_label", { filter: weekLabel });
-    const genTxt = t("exports.generated_on", { date: new Date().toLocaleDateString() });
+    const filterTxt = getPDFLabel(t, "exports.filter_label", "Filter: {filter}", { filter: weekLabel });
+    const genTxt = getPDFLabel(t, "exports.generated_on", "Generated: {date}", { date: new Date().toLocaleDateString() });
 
     const children = [
         new Paragraph({
             heading: HeadingLevel.TITLE,
             alignment: AlignmentType.CENTER,
-            children: [new TextRun(t("exports.weekly_report_title") || "Weekly DTR Report")]
+            children: [new TextRun(getPDFLabel(t, "exports.weekly_report_title", "Weekly DTR Report"))]
         }),
         new Paragraph({
             alignment: AlignmentType.CENTER,
@@ -456,21 +475,21 @@ function exportWeeklyDOCX() {
 
     weeks.forEach((w) => {
         const weekRange = getWeekDateRange(w.week);
-        const l2Label = t("exports.summary_l2_telemetry") || "L2 Telemetry";
-        const pers = t("exports.summary_personal") || "Personal:";
-        const sleep = t("exports.summary_sleep") || "Sleep:";
-        const recov = t("exports.summary_recovery") || "Recovery:";
+        const l2Label = getPDFLabel(t, "exports.summary_l2_telemetry", "L2 Telemetry");
+        const pers = getPDFLabel(t, "exports.summary_personal", "Personal:");
+        const sleep = getPDFLabel(t, "exports.summary_sleep", "Sleep:");
+        const recov = getPDFLabel(t, "exports.summary_recovery", "Recovery:");
 
         children.push(
             new Paragraph({
                 heading: HeadingLevel.HEADING_2,
-                children: [new TextRun(t("exports.week_summary_title", { week: w.week }))]
+                children: [new TextRun(getPDFLabel(t, "exports.week_summary_title", "Week {week} Summary", { week: w.week }))]
             }),
             new Paragraph({
                 children: [new TextRun(`${weekRange.start} - ${weekRange.end}`)]
             }),
             new Paragraph({
-                children: [new TextRun(`${t("exports.summary_ojt_hours") || "Total OJT Hours:"} ${w.totalHours.toFixed(1)}h`)]
+                children: [new TextRun(`${getPDFLabel(t, "exports.summary_ojt_hours", "Total OJT Hours:")} ${w.totalHours.toFixed(1)}h`)]
             }),
             new Paragraph({
                 children: [new TextRun(`${l2Label}: ${pers} ${w.personalHours.toFixed(1)}h | ${sleep} ${w.sleepHours.toFixed(1)}h | ${recov} ${w.recoveryHours.toFixed(1)}h`)]
@@ -480,13 +499,13 @@ function exportWeeklyDOCX() {
         if (w.tools.length) {
             children.push(
                 new Paragraph({
-                    children: [new TextRun(`${t("exports.summary_tools_used") || "Tools Used:"} ${w.tools.join(", ")}`)]
+                    children: [new TextRun(`${getPDFLabel(t, "exports.summary_tools_used", "Tools Used:")} ${w.tools.join(", ")}`)]
                 })
             );
         }
 
         if (w.accomplishments.length) {
-            children.push(new Paragraph({ children: [new TextRun(t("exports.summary_accomplishments") || "Accomplishments:")] }));
+            children.push(new Paragraph({ children: [new TextRun(getPDFLabel(t, "exports.summary_accomplishments", "Accomplishments:"))] }));
             w.accomplishments.forEach((a) => {
                 const text = `[${a.date}] ${a.text || ""}`.trim();
                 children.push(new Paragraph({ text, bullet: { level: 0 } }));

@@ -4,7 +4,6 @@
 *.key
 
 # Dependencies (These are huge and can be reinstalled)
-node_modules/
 dist/
 build/
 
@@ -22,6 +21,14 @@ npm-debug.log*logs
 *.log
 
 # Ignore Files
+i18n_grouping_rules.txt 
+package.json
+package-lock.json
 node_modules/
-.VSCodeCounter
-.vscode
+scripts/test_ui.js
+scripts/test_calculations.js
+scripts/test_stability.js
+scripts/test_telemetry_logic.js
+scripts/test_ui.js
+.vscode/
+.VSCodeCounter/
