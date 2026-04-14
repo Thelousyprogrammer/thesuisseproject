@@ -105,6 +105,44 @@ function withAlpha(color, alpha = 0.2) {
     return color;
 }
 
+/**
+ * Interpolates between two hex colors based on a factor (0-1)
+ */
+function interpolateHex(color1, color2, factor) {
+    const f = Math.max(0, Math.min(1, factor));
+    const parse = (c) => {
+        if (typeof c !== 'string') return [255, 255, 255];
+        if (c.startsWith('#')) {
+            const hex = c.length === 4 ? c[1]+c[1]+c[2]+c[2]+c[3]+c[3] : c.slice(1);
+            return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+        }
+        const match = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        return match ? [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])] : [255, 255, 255];
+    };
+    const c1 = parse(color1);
+    const c2 = parse(color2);
+    const r = Math.round(c1[0] + (c2[0] - c1[0]) * f);
+    const g = Math.round(c1[1] + (c2[1] - c1[1]) * f);
+    const b = Math.round(c1[2] + (c2[2] - c1[2]) * f);
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+/**
+ * Maps a ratio (0-1) to the project's performance color ramp
+ */
+function getPerformanceColor(ratio) {
+    const r = Math.max(0, Math.min(1, ratio));
+    // Ramp: Warning (0.0) -> Accent (0.35) -> Good (0.7) -> Excellent (1.0)
+    const cWarning = (typeof COLORS !== 'undefined') ? COLORS.warning : '#FFB800';
+    const cAccent = (typeof COLORS !== 'undefined') ? COLORS.accent : '#ff1e00';
+    const cGood = (typeof COLORS !== 'undefined') ? COLORS.good : '#00D1FF';
+    const cExcellent = (typeof COLORS !== 'undefined') ? COLORS.excellent : '#FF00FF';
+
+    if (r < 0.35) return interpolateHex(cWarning, cAccent, r / 0.35);
+    if (r < 0.7) return interpolateHex(cAccent, cGood, (r - 0.35) / 0.35);
+    return interpolateHex(cGood, cExcellent, (r - 0.7) / 0.3);
+}
+
 function renderTrajectoryChart(logs, customPace = null) {
     const canvas = document.getElementById('trajectoryChart');
     if (!canvas) return;
@@ -726,58 +764,100 @@ function renderRadarChart(logs) {
     });
 }
 
-function renderHourDistChart(logs) {
-    const canvas = document.getElementById('hourDistChart');
+function renderProductivityMatrix(logs) {
+    const canvas = document.getElementById('productivityMatrixChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    const t = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
 
-    const tDist = (window.DTRI18N && window.DTRI18N.t) ? window.DTRI18N.t : null;
-    const bins = [
-        tDist ? tDist("chart_dist_less_4") : "<4h",
-        tDist ? tDist("chart_dist_4_6") : "4-6h",
-        tDist ? tDist("chart_dist_6_8") : "6-8h",
-        tDist ? tDist("chart_dist_8_9") : "8-9h",
-        tDist ? tDist("chart_dist_9_plus") : "9h+"
-    ];
-    const counts = [0, 0, 0, 0, 0];
+    const dataPoints = logs.map(r => {
+        const tasks = (r.accomplishments && Array.isArray(r.accomplishments)) ? r.accomplishments.length : 0;
+        const output = r.hours > 0 ? (tasks / r.hours) : 0;
+        const identity = parseInt(r.identityScore, 10) || 0;
+        const perfRatio = Math.min(1, (output / 2.5) * 0.4 + (identity / 5) * 0.6);
+        return {
+            x: identity,
+            y: parseFloat(output.toFixed(2)),
+            r: Math.max(6, Math.min(22, (r.hours * 2.2))),
+            perf: perfRatio,
+            date: r.date,
+            duration: r.hours,
+            tasks: tasks
+        };
+    }).filter(p => p.x > 0);
 
-    logs.forEach(l => {
-        const h = l.hours;
-        if (h < 4) counts[0]++;
-        else if (h < 6) counts[1]++;
-        else if (h < 8) counts[2]++;
-        else if (h < 9) counts[3]++;
-        else counts[4]++;
-    });
+    if (charts.productivity && typeof charts.productivity.destroy === "function") {
+        charts.productivity.destroy();
+    }
 
-    charts.hourDist = new Chart(ctx, {
-        type: 'doughnut',
+    charts.productivity = new Chart(ctx, {
+        type: 'bubble',
         data: {
-            labels: bins,
             datasets: [{
-                data: counts,
-                backgroundColor: [
-                    withAlpha(COLORS.text, 0.6),
-                    COLORS.warning,
-                    COLORS.accent,
-                    COLORS.good,
-                    COLORS.aux || COLORS.excellent
-                ],
-                borderWidth: 0,
-                hoverOffset: 4
+                data: dataPoints,
+                backgroundColor: (ctx) => {
+                    const p = ctx.raw;
+                    return p ? withAlpha(getPerformanceColor(p.perf), 0.8) : COLORS.accent;
+                },
+                borderColor: (ctx) => {
+                    const p = ctx.raw;
+                    return p ? getPerformanceColor(p.perf) : COLORS.accent;
+                },
+                borderWidth: 2,
+                hoverRadius: 2,
+                hoverBorderWidth: 3,
+                hoverBorderColor: '#ffffff',
+                // Neon Glow effect
+                shadowBlur: 20,
+                shadowColor: (ctx) => {
+                    const p = ctx.raw;
+                    return p ? getPerformanceColor(p.perf) : 'transparent';
+                }
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { color: COLORS.text, font: { size: 11 }, padding: 15 }
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(16, 19, 26, 0.95)',
+                    titleColor: COLORS.accent,
+                    borderColor: COLORS.border || 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: false,
+                    bodyFont: { family: "'Formula1 Display', sans-serif", size: 11 },
+                    titleFont: { family: "'Formula1 Display', sans-serif", size: 12 },
+                    callbacks: {
+                        label: (context) => {
+                            const p = context.raw;
+                            return [
+                                `DATE: ${p.date}`,
+                                `ALIGNMENT: ${p.x}/5`,
+                                `OUTPUT: ${p.y} tasks/hr`,
+                                `INTENSITY: ${p.duration}h`,
+                                `PERFORMANCE: ${p.perf}%`
+                            ];
+                        }
+                    }
                 }
             },
-            cutout: '70%',
-            spacing: 2
+            scales: {
+                x: {
+                    title: { display: true, text: t ? t('charts_general.chart_productivity_matrix_x') : 'IDENTITY ALIGNMENT', color: COLORS.text, font: { size: 10, weight: 'bold', family: "'Formula1 Display', sans-serif" } },
+                    min: 0.5,
+                    max: 5.5,
+                    grid: { color: COLORS.grid, borderDash: [2, 2] },
+                    ticks: { stepSize: 1, color: withAlpha(COLORS.text, 0.7), font: { family: "'Formula1 Display', sans-serif", size: 9 } }
+                },
+                y: {
+                    title: { display: true, text: t ? t('charts_general.chart_productivity_matrix_y') : 'TASKS PER HOUR', color: COLORS.text, font: { size: 10, weight: 'bold', family: "'Formula1 Display', sans-serif" } },
+                    beginAtZero: true,
+                    grid: { color: COLORS.grid, borderDash: [2, 2] },
+                    ticks: { color: withAlpha(COLORS.text, 0.7), font: { family: "'Formula1 Display', sans-serif", size: 9 } }
+                }
+            }
         }
     });
 }

@@ -114,6 +114,7 @@
     // --- THE CORE API ---
     window.DTRI18N = {
         t: t,
+        getLanguage: () => CURRENT_LANG,
         getDict: () => DICT[CURRENT_LANG],
         
         applyTranslations: function() {

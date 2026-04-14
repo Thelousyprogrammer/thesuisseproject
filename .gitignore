@@ -1,34 +1,48 @@
+# Dependencies
+node_modules/
+dist/
+build/
+
+# IDE / Editor Settings
+.vscode/
+.idea/
+.VSCodeCounter/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Secrets and Credentials
 .env
 *.pem
 *.key
 
-# Dependencies (These are huge and can be reinstalled)
-dist/
-build/
-
-# Operating System Files
-.DS_Store
-Thumbs.db
-
-# IDE / Editor Settings
-.vscode/
-.idea/
-
-# Log files
-*.log
-npm-debug.log*logs
-*.log
-
-# Ignore Files
-i18n_grouping_rules.txt 
+# Project Specific Exclusions
+i18n_grouping_rules.txt
 package.json
 package-lock.json
-node_modules/
 scripts/test_ui.js
 scripts/test_calculations.js
 scripts/test_stability.js
 scripts/test_telemetry_logic.js
-scripts/test_ui.js
-.vscode/
-.VSCodeCounter/
+scripts/audit_locales.js
+
+# Temporary Files
+.gemini/
+*.tmp
+*.bak

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -16,7 +16,6 @@
   <link rel="manifest" href="favicons/site.webmanifest">
   <meta name="theme-color" content="#10131a">
   <script src="scripts/theme-sync.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/dist/index.min.js"></script>
   <script src="scripts/dtr-i18n.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
@@ -199,9 +198,9 @@
     </div>
     <div class="telemetry-charts-row telemetry-dynamics-secondary">
       <div class="card chart-card">
-        <h3 data-i18n="charts_general.telemetry_hours_distribution">Hours Distribution</h3>
-        <div class="chart-wrap chart-wrap-hours">
-          <canvas id="hourDistChart"></canvas>
+        <h3 data-i18n="charts_general.telemetry_productivity_matrix">Performance Matrix</h3>
+        <div class="chart-wrap chart-tall">
+          <canvas id="productivityMatrixChart"></canvas>
         </div>
       </div>
       <div class="card chart-card">
@@ -380,11 +379,12 @@
           </ul>
         </details>
         <details class="formula-card">
-          <summary class="formula-title"><strong data-i18n="charts_formulas.formula_dist_title">Hours Distribution</strong></summary>
-          <code class="formula-block">bin_count(b) = number of records with hours ∈ b</code>
+          <summary class="formula-title"><strong data-i18n="charts_formulas.formula_productivity_title">Performance Matrix (Correlation)</strong></summary>
+          <code class="formula-block">Output = (Tasks / Hours) correlated with Identity Score</code>
           <ul class="formula-vars">
-            <li><code>b</code>: <span data-i18n="charts_formulas.formula_var_interval">one interval in {intervals}</span></li>
-            <li><code>bin_count(b)</code>: <span data-i18n="charts_formulas.formula_var_bin_count">records that fall within interval b</span></li>
+            <li><span data-i18n="charts_general.chart_productivity_matrix_x">Identity Score (Alignment)</span></li>
+            <li><span data-i18n="charts_general.chart_productivity_matrix_y">Hourly Output (Tasks/hr)</span></li>
+            <li><span data-i18n="charts_general.formula_var_impact">Bubble Size: Relative Session Duration</span></li>
           </ul>
         </details>
         <details class="formula-card">

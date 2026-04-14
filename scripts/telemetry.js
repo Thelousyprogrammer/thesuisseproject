@@ -655,7 +655,7 @@ function renderTelemetry(logs, selectedWeek = "all") {
         renderEnergyZoneChart(logs);
         renderContextualCharts(logs, selectedWeek);
         renderRadarChart(logs);
-        renderHourDistChart(logs);
+        renderProductivityMatrix(logs);
         renderWeeklyEffortChart(allLogs);
         renderWeeklyMatrix(allLogs);
         initTelemetryEntranceAnimations();

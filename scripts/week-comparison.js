@@ -6,6 +6,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (typeof hydrateOjtSettingsFromStorage === "function") {
         hydrateOjtSettingsFromStorage();
     }
+
+    // Wait for i18n to be ready to avoid raw keys in generated content
+    if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
+        await window.DTRI18N.bootstrap();
+    }
+
     const logs = await fetchTelemetryData();
     renderWeekComparison(logs);
 });
@@ -45,8 +51,8 @@ function getThemeColors() {
 function renderWeekComparison(logs) {
     const t = (window.DTRI18N && typeof window.DTRI18N.t === "function") ? window.DTRI18N.t : null;
     if (!logs || logs.length === 0) {
-        const noDataLabel = t ? t("no_data_available") : "No data available";
-        document.getElementById("comparisonTableBody").innerHTML = `<tr><td colspan="5" data-i18n="no_data_available">${noDataLabel}</td></tr>`;
+        const noDataLabel = t ? t("ui.no_data_available") : "No data available";
+        document.getElementById("comparisonTableBody").innerHTML = `<tr><td colspan="5" data-i18n="ui.no_data_available">${noDataLabel}</td></tr>`;
         return;
     }
 
@@ -66,9 +72,11 @@ function renderWeekComparison(logs) {
     const tbody = document.getElementById("comparisonTableBody");
     tbody.innerHTML = "";
 
-    const labels = sortedWeeks.map(w => t ? t("week_label", { week: w }) : `Week ${w}`);
+    const labels = sortedWeeks.map(w => t ? t("ui.week_label", { week: w }) : `Week ${w}`);
     const ojtData = sortedWeeks.map(w => weekGroups[w].hours);
     const personalData = sortedWeeks.map(w => weekGroups[w].personal);
+
+    const targetData = sortedWeeks.map(() => 40); // Standard 40h week target
 
     new Chart(document.getElementById('growthChart'), {
         type: 'line',
@@ -76,20 +84,31 @@ function renderWeekComparison(logs) {
             labels,
             datasets: [
                 {
-                    label: t ? t('chart_effort_ojt') : 'OJT Hours',
-                    data: ojtData,
-                    borderColor: colors.accent,
-                    backgroundColor: colors.accent + '22',
-                    fill: true,
-                    tension: 0.3
-                },
-                {
-                    label: t ? t('chart_effort_personal') : 'Personal Hours',
+                    label: t ? t('week_comparison.chart_effort_personal') : 'Personal Hours',
                     data: personalData,
                     borderColor: colors.excellent,
-                    backgroundColor: colors.excellent + '22',
+                    backgroundColor: colors.excellent + '44',
                     fill: true,
-                    tension: 0.3
+                    tension: 0.3,
+                    stack: 'combined'
+                },
+                {
+                    label: t ? t('week_comparison.chart_effort_ojt') : 'OJT Hours',
+                    data: ojtData,
+                    borderColor: colors.accent,
+                    backgroundColor: colors.accent + '44',
+                    fill: true,
+                    tension: 0.3,
+                    stack: 'combined'
+                },
+                {
+                    label: 'Target (40h)',
+                    data: targetData,
+                    borderColor: 'rgba(255,255,255,0.3)',
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0
                 }
             ]
         },
@@ -97,11 +116,20 @@ function renderWeekComparison(logs) {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: colors.text } },
-                x: { grid: { display: false }, ticks: { color: colors.text } }
+                y: { 
+                    stacked: true,
+                    beginAtZero: true, 
+                    grid: { color: 'rgba(255,255,255,0.05)' }, 
+                    ticks: { color: colors.text } 
+                },
+                x: { 
+                    grid: { display: false }, 
+                    ticks: { color: colors.text } 
+                }
             },
             plugins: {
-                legend: { labels: { color: colors.text } }
+                legend: { labels: { color: colors.text, usePointStyle: true } },
+                tooltip: { mode: 'index', intersect: false }
             }
         }
     });
@@ -121,11 +149,11 @@ function renderWeekComparison(logs) {
         }
 
         const dateRange = getWeekDateRange(w);
-        const rangeLabel = `${formatGmt8DateLabel(dateRange.start)} - ${formatGmt8DateLabel(dateRange.end)}`;
+        const rangeLabel = `${dateRange.start} - ${dateRange.end}`;
 
         const row = document.createElement("tr");
         row.innerHTML = `
-            <td>${t ? t("week_label", { week: w }) : `Week ${w}`}<br><small>${rangeLabel}</small></td>
+            <td>${t ? t("ui.week_label", { week: w }) : `Week ${w}`}<br><small>${rangeLabel}</small></td>
             <td>${data.hours.toFixed(1)}h</td>
             <td>${data.personal.toFixed(1)}h</td>
             <td class="${growthClass}">${growthLabel}</td>

@@ -6,6 +6,15 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/telemetry.css">
     <link rel="stylesheet" href="css/theme.css">
+    <!-- Favicons -->
+    <link rel="icon" href="favicons/F1Favicon32.png" sizes="32x32" type="image/png">
+    <link rel="icon" href="favicons/F1Favicon192.png" sizes="192x192" type="image/png">
+    <link id="site-favicon" rel="icon" href="favicons/F1Favicon32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="favicons/apple-touch-icon.png" sizes="192x192">
+    <link rel="manifest" href="favicons/site.webmanifest">
+    <meta name="theme-color" content="#10131a">
+
+    <script src="scripts/theme-sync.js"></script>
     <style>
         .comparison-container {
             max-width: 1000px;
@@ -51,7 +60,9 @@
         .summary-card strong { font-size: 1.8rem; display: block; color: var(--accent); }
     </style>
     <script>
-        const savedTheme = localStorage.getItem('user-theme') || 'f1';
+        const savedTheme = (window.ThemeSync && typeof window.ThemeSync.getLocalTheme === 'function')
+            ? window.ThemeSync.getLocalTheme()
+            : (localStorage.getItem('user-theme') || 'f1');
         document.documentElement.setAttribute('data-theme', savedTheme);
     </script>
 </head>
@@ -60,37 +71,37 @@
 <div class="comparison-container">
     <header class="telemetry-header card">
         <div class="telemetry-header-inner">
-            <h1 data-i18n="telemetry_weekly_comparison_view">Weekly Comparison View</h1>
+            <h1 data-i18n="telemetry_dashboard.telemetry_weekly_comparison_view">Weekly Comparison View</h1>
             <div class="telemetry-header-actions">
-                <button class="telemetry-btn" onclick="window.location.href='telemetry.html'" data-i18n="back_to_telemetry">Back to Telemetry</button>
+                <button class="telemetry-btn" onclick="window.location.href='telemetry.html'" data-i18n="navigation.back_to_telemetry">Back to Telemetry</button>
             </div>
         </div>
     </header>
 
     <div class="summary-cards">
         <div class="summary-card">
-            <h3 data-i18n="total_ojt_hours">Total OJT Hours</h3>
+            <h3 data-i18n="week_comparison.total_ojt_hours">Total OJT Hours</h3>
             <strong id="grandTotalHours">0.0h</strong>
         </div>
         <div class="summary-card">
-            <h3 data-i18n="total_personal_hours">Total Personal Hours</h3>
+            <h3 data-i18n="week_comparison.total_personal_hours">Total Personal Hours</h3>
             <strong id="grandTotalPersonal">0.0h</strong>
         </div>
     </div>
 
     <div class="card">
-        <h3 data-i18n="weekly_effort_trend">Weekly Effort Trend</h3>
+        <h3 data-i18n="week_comparison.weekly_effort_trend">Weekly Effort Trend</h3>
         <div class="chart-wrap" style="height: 300px; margin-bottom: 20px;">
             <canvas id="growthChart"></canvas>
         </div>
         <table class="comparison-table">
             <thead>
                 <tr>
-                    <th data-i18n="week_period">Week Period</th>
-                    <th data-i18n="chart_effort_ojt">OJT Hours</th>
-                    <th data-i18n="chart_effort_personal">Personal Hours</th>
-                    <th data-i18n="effort_gain_pct">Effort Gain (%)</th>
-                    <th data-i18n="time_efficiency">Time Efficiency</th>
+                    <th data-i18n="week_comparison.week_period">WEEK PERIOD</th>
+                    <th data-i18n="week_comparison.ojt_hours">OJT HOURS</th>
+                    <th data-i18n="week_comparison.personal_hours">PERSONAL HOURS</th>
+                    <th data-i18n="week_comparison.effort_gain">EFFORT GAIN (%)</th>
+                    <th data-i18n="week_comparison.time_efficiency">TIME EFFICIENCY</th>
                 </tr>
             </thead>
             <tbody id="comparisonTableBody">
@@ -101,15 +112,18 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script type="module" src="scripts/dtr-core.js"></script>
-<script type="module" src="scripts/dtr-storage.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@iarna/toml@2.2.5/dist/index.min.js"></script>
-<script type="module" src="scripts/dtr-i18n.js"></script>
-<script type="module" src="scripts/week-comparison.js"></script>
+<script src="scripts/store.js"></script>
+<script src="scripts/dtr-core.js"></script>
+<script src="scripts/dtr-image-store.js"></script>
+<script src="scripts/dtr-storage.js"></script>
+<script src="scripts/dtr-i18n.js"></script>
+<script src="scripts/week-comparison.js"></script>
 <script>
-    if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
-      window.DTRI18N.bootstrap();
-    }
+    window.addEventListener("DOMContentLoaded", () => {
+        if (window.DTRI18N && typeof window.DTRI18N.bootstrap === "function") {
+            window.DTRI18N.bootstrap();
+        }
+    });
 </script>
 </body>
 </html>
